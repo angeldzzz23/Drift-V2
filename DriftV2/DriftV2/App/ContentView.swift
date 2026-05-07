@@ -9,8 +9,10 @@ import SwiftUI
 import ModelKit
 
 struct ContentView: View {
+    @Environment(ModelStore.self) private var store
+
     var body: some View {
-        ModelManagerView()
+        ModelManagerView(store: store)
     }
 }
 
