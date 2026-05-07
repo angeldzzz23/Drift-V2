@@ -14,7 +14,8 @@ struct ContentView: View {
     var body: some View {
         TabView {
             Tab("Chat", systemImage: "bubble.left.and.bubble.right") {
-                ChatView(store: store)
+                ChatView()
+                    .environment(store)
             }
             Tab("Models", systemImage: "shippingbox") {
                 ModelManagerView(store: store)

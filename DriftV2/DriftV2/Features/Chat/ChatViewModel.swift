@@ -23,34 +23,22 @@ final class ChatViewModel {
         category: "Chat"
     )
 
-    private let store: ModelStore
     private var generationTask: Task<Void, Never>?
 
     var messages: [ChatMessage] = []
     var draft: String = ""
 
-    init(store: ModelStore) {
-        self.store = store
-    }
+    var isGenerating: Bool { generationTask != nil }
 
-    /// Currently-loaded LLM, if any. Reading this in views participates
-    /// in @Observable tracking, so the chat enables/disables itself
-    /// automatically as the user loads/unloads in the Models tab.
-    var loadedLLM: LLMModel? {
-        store.loadedModels[.llm] as? LLMModel
-    }
-
-    var canSend: Bool {
+    func canSend(loadedLLM: LLMModel?) -> Bool {
         loadedLLM != nil
             && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !isGenerating
     }
 
-    var isGenerating: Bool { generationTask != nil }
-
-    func send() {
+    func send(using llm: LLMModel) {
         let prompt = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !prompt.isEmpty, let llm = loadedLLM, !isGenerating else { return }
+        guard !prompt.isEmpty, !isGenerating else { return }
 
         Self.logger.info("Send: \(prompt.count) chars, model \(llm.repoId, privacy: .public)")
 

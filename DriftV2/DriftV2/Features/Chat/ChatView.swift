@@ -5,19 +5,19 @@
 
 import SwiftUI
 import ModelKit
+import ModelKitMLX
 
 struct ChatView: View {
-    @State private var vm: ChatViewModel
-
-    init(store: ModelStore) {
-        _vm = State(initialValue: ChatViewModel(store: store))
-    }
+    @State private var vm = ChatViewModel()
+    @Environment(ModelStore.self) private var store
 
     var body: some View {
         @Bindable var vm = vm
+        let loadedLLM = store.loadedModels[.llm] as? LLMModel
+
         NavigationStack {
             VStack(spacing: 0) {
-                if vm.loadedLLM != nil {
+                if loadedLLM != nil {
                     chatScroll
                 } else {
                     emptyState
@@ -28,8 +28,10 @@ struct ChatView: View {
                     TextField("Message", text: $vm.draft, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
                         .lineLimit(1...5)
-                        .disabled(vm.loadedLLM == nil || vm.isGenerating)
-                        .onSubmit { vm.send() }
+                        .disabled(loadedLLM == nil || vm.isGenerating)
+                        .onSubmit {
+                            if let llm = loadedLLM { vm.send(using: llm) }
+                        }
                         .submitLabel(.send)
 
                     if vm.isGenerating {
@@ -42,13 +44,13 @@ struct ChatView: View {
                         .buttonStyle(.plain)
                     } else {
                         Button {
-                            vm.send()
+                            if let llm = loadedLLM { vm.send(using: llm) }
                         } label: {
                             Image(systemName: "arrow.up.circle.fill")
                                 .font(.title2)
                         }
                         .buttonStyle(.plain)
-                        .disabled(!vm.canSend)
+                        .disabled(!vm.canSend(loadedLLM: loadedLLM))
                     }
                 }
                 .padding()
@@ -112,5 +114,6 @@ struct ChatView: View {
 }
 
 #Preview {
-    ChatView(store: ModelStore(registry: ModelKindRegistry()))
+    ChatView()
+        .environment(ModelStore(registry: ModelKindRegistry()))
 }
