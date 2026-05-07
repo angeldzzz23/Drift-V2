@@ -26,11 +26,13 @@ struct ModelManagerView: View {
                             ModelRow(
                                 entry: entry,
                                 state: vm.rowState(for: entry),
+                                isDefault: vm.isDefault(entry),
                                 onDownload: { vm.requestDownload(entry) },
                                 onCancel: { vm.cancelDownload(entry) },
                                 onLoad: { Task { await vm.load(entry) } },
                                 onUnload: { vm.unload(entry) },
-                                onDelete: { vm.requestDelete(entry) }
+                                onDelete: { vm.requestDelete(entry) },
+                                onToggleDefault: { vm.toggleDefault(entry) }
                             )
                         }
                     }
@@ -42,6 +44,9 @@ struct ModelManagerView: View {
             #if os(iOS)
             .listStyle(.insetGrouped)
             #endif
+            .task {
+                await vm.loadDefaults()
+            }
             .alert(
                 "Delete model?",
                 isPresented: Binding(

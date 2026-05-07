@@ -9,11 +9,13 @@ import ModelKit
 struct ModelRow: View {
     let entry: ModelEntry
     let state: ModelRowState
+    let isDefault: Bool
     let onDownload: () -> Void
     let onCancel: () -> Void
     let onLoad: () -> Void
     let onUnload: () -> Void
     let onDelete: () -> Void
+    let onToggleDefault: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -27,6 +29,12 @@ struct ModelRow: View {
                         .truncationMode(.middle)
                 }
                 Spacer()
+                Button(action: onToggleDefault) {
+                    Image(systemName: isDefault ? "star.fill" : "star")
+                        .foregroundStyle(isDefault ? .yellow : .secondary)
+                }
+                .buttonStyle(.plain)
+                .help(isDefault ? "Loaded automatically on launch" : "Mark as auto-load on launch")
                 statusBadge
             }
 

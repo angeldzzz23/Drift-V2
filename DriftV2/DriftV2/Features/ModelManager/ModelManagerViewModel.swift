@@ -26,6 +26,9 @@ final class ModelManagerViewModel {
         category: "ModelManager"
     )
 
+    /// UserDefaults key for the persisted set of default-model entry.ids.
+    private static let defaultsKey = "DriftV2.defaultModelEntryIds"
+
     private let store: ModelStore
 
     var entryToDelete: ModelEntry?
@@ -33,6 +36,7 @@ final class ModelManagerViewModel {
 
     init(store: ModelStore) {
         self.store = store
+        hydrateDefaultsFromUserDefaults()
     }
 
     // MARK: - Read-through projections
@@ -50,12 +54,16 @@ final class ModelManagerViewModel {
 
     func rowState(for entry: ModelEntry) -> ModelRowState {
         if store.isLoaded(entry) { return .loaded }
-        if store.loadingEntryId == entry.id { return .loading }
+        if store.isLoading(entry) { return .loading }
         if store.isDownloading(entry) {
             return .downloading(progress: store.progress(for: entry) ?? 0)
         }
         if store.isDownloaded(entry) { return .onDisk }
         return .notDownloaded(compatible: deviceTier >= entry.minTier)
+    }
+
+    func isDefault(_ entry: ModelEntry) -> Bool {
+        store.defaults.contains(entry)
     }
 
     // MARK: - Actions
@@ -108,6 +116,39 @@ final class ModelManagerViewModel {
         Self.logger.info("Delete: \(entry.repoId, privacy: .public)")
         store.delete(entry)
         entryToDelete = nil
+    }
+
+    func toggleDefault(_ entry: ModelEntry) {
+        if let idx = store.defaults.firstIndex(of: entry) {
+            store.defaults.remove(at: idx)
+            Self.logger.info("Removed from defaults: \(entry.repoId, privacy: .public)")
+        } else {
+            store.defaults.append(entry)
+            Self.logger.info("Added to defaults: \(entry.repoId, privacy: .public)")
+        }
+        persistDefaults()
+    }
+
+    /// Kick off concurrent loads of every entry in `store.defaults`.
+    /// Called once when the view first appears.
+    func loadDefaults() async {
+        guard !store.defaults.isEmpty else { return }
+        Self.logger.info("Loading defaults: \(self.store.defaults.map(\.repoId).joined(separator: ", "), privacy: .public)")
+        await store.loadDefaults()
+        Self.logger.info("Defaults load pass complete")
+    }
+
+    // MARK: - UserDefaults persistence
+
+    private func hydrateDefaultsFromUserDefaults() {
+        let ids = UserDefaults.standard.stringArray(forKey: Self.defaultsKey) ?? []
+        let byId = Dictionary(uniqueKeysWithValues: Catalog.all.map { ($0.id, $0) })
+        store.defaults = ids.compactMap { byId[$0] }
+    }
+
+    private func persistDefaults() {
+        let ids = store.defaults.map(\.id)
+        UserDefaults.standard.set(ids, forKey: Self.defaultsKey)
     }
 
     /// Background-tick watcher: logs once when a kicked-off download leaves
