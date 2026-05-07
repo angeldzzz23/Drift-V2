@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		AABB000000000000000000A1 /* ModelKit in Frameworks */ = {isa = PBXBuildFile; productRef = AABB000000000000000000B1 /* ModelKit */; };
+		AABB000000000000000000A2 /* ModelKitMLX in Frameworks */ = {isa = PBXBuildFile; productRef = AABB000000000000000000B2 /* ModelKitMLX */; };
+		AABB000000000000000000A3 /* ModelKitWhisper in Frameworks */ = {isa = PBXBuildFile; productRef = AABB000000000000000000B3 /* ModelKitWhisper */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		085EE24E2FAD2FE40044870B /* DriftV2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DriftV2.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +29,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AABB000000000000000000A1 /* ModelKit in Frameworks */,
+				AABB000000000000000000A2 /* ModelKitMLX in Frameworks */,
+				AABB000000000000000000A3 /* ModelKitWhisper in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +74,9 @@
 			);
 			name = DriftV2;
 			packageProductDependencies = (
+				AABB000000000000000000B1 /* ModelKit */,
+				AABB000000000000000000B2 /* ModelKitMLX */,
+				AABB000000000000000000B3 /* ModelKitWhisper */,
 			);
 			productName = DriftV2;
 			productReference = 085EE24E2FAD2FE40044870B /* DriftV2.app */;
@@ -94,6 +106,9 @@
 			);
 			mainGroup = 085EE2452FAD2FE40044870B;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AABB000000000000000000C1 /* XCLocalSwiftPackageReference "../../ModelKit/ModelKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 085EE24F2FAD2FE40044870B /* Products */;
 			projectDirPath = "";
@@ -246,6 +261,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = DriftV2/DriftV2.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = V2FT48C373;
@@ -290,6 +306,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = DriftV2/DriftV2.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = V2FT48C373;
@@ -351,6 +368,28 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		AABB000000000000000000C1 /* XCLocalSwiftPackageReference "../../ModelKit/ModelKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../ModelKit/ModelKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AABB000000000000000000B1 /* ModelKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ModelKit;
+		};
+		AABB000000000000000000B2 /* ModelKitMLX */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ModelKitMLX;
+		};
+		AABB000000000000000000B3 /* ModelKitWhisper */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ModelKitWhisper;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 085EE2462FAD2FE40044870B /* Project object */;
 }
