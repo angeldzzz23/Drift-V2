@@ -56,6 +56,7 @@ struct ConnectionSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
+                #if DEBUG
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
                         dumpServicesAndStatus()
@@ -63,6 +64,7 @@ struct ConnectionSheet: View {
                         Label("Print", systemImage: "ladybug")
                     }
                 }
+                #endif
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
