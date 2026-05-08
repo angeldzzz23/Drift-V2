@@ -4,14 +4,24 @@
 //
 //  Renders a list of `ServiceCapability` (local advertised, or a peer's
 //  hello payload) as readable cards: service id + type pill + per-model
-//  status row with name, repoId, size, and a status icon.
+//  status row. For `type=llm` services, a "Use for chat" button writes
+//  to `BackendSelection` so this device's chat sends route to the right
+//  source.
 //
 
 import SwiftUI
 import Peerly
 
+enum ServiceSource: Hashable {
+    case local
+    case remote(Peer)
+}
+
 struct ServicesView: View {
     let services: [ServiceCapability]
+    let source: ServiceSource
+
+    @Environment(BackendSelection.self) private var selection
 
     var body: some View {
         if services.isEmpty {
@@ -43,6 +53,19 @@ struct ServicesView: View {
                         .padding(.vertical, 2)
                         .background(.gray.opacity(0.15), in: Capsule())
                 }
+                if service.metadata["type"] == "llm" {
+                    selectionPill(
+                        isSelected: isSelectedAsLLM,
+                        title: "Use for chat",
+                        action: applyLLMSelection
+                    )
+                } else if service.metadata["type"] == "whisper" {
+                    selectionPill(
+                        isSelected: isSelectedAsWhisper,
+                        title: "Use for transcription",
+                        action: applyWhisperSelection
+                    )
+                }
             }
 
             let models = Self.decodeModels(from: service.metadata["models"])
@@ -56,6 +79,56 @@ struct ServicesView: View {
                     ModelStatusRow(model: model)
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func selectionPill(
+        isSelected: Bool,
+        title: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        if isSelected {
+            Label("In use", systemImage: "checkmark.circle.fill")
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.green)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(Color.green.opacity(0.12), in: Capsule())
+        } else {
+            Button(action: action) {
+                Text(title)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+    }
+
+    private var isSelectedAsLLM: Bool {
+        switch source {
+        case .local: return selection.isUsingLocalLLM
+        case .remote(let peer): return selection.isUsingRemoteLLM(on: peer.id)
+        }
+    }
+
+    private var isSelectedAsWhisper: Bool {
+        switch source {
+        case .local: return selection.isUsingLocalWhisper
+        case .remote(let peer): return selection.isUsingRemoteWhisper(on: peer.id)
+        }
+    }
+
+    private func applyLLMSelection() {
+        switch source {
+        case .local: selection.useLocalLLM()
+        case .remote(let peer): selection.useRemoteLLM(on: peer)
+        }
+    }
+
+    private func applyWhisperSelection() {
+        switch source {
+        case .local: selection.useLocalWhisper()
+        case .remote(let peer): selection.useRemoteWhisper(on: peer)
         }
     }
 

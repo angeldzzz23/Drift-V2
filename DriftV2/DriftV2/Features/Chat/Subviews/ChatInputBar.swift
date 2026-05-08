@@ -9,8 +9,8 @@ import ModelKitWhisper
 
 struct ChatInputBar: View {
     @Bindable var vm: ChatViewModel
-    let loadedLLM: LLMModel?
-    let loadedWhisper: WhisperModel?
+    let backend: ChatBackend?
+    let transcribeBackend: TranscribeBackend?
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -29,7 +29,7 @@ struct ChatInputBar: View {
     }
 
     private var textFieldDisabled: Bool {
-        loadedLLM == nil || vm.isGenerating || vm.isRecording || vm.isTranscribing
+        backend == nil || vm.isGenerating || vm.isRecording || vm.isTranscribing
     }
 
     @ViewBuilder
@@ -52,7 +52,7 @@ struct ChatInputBar: View {
                     .font(.title2)
             }
             .buttonStyle(.plain)
-            .disabled(!vm.canRecord(loadedWhisper: loadedWhisper))
+            .disabled(!vm.canRecord(transcribeBackend: transcribeBackend))
         }
     }
 
@@ -70,12 +70,12 @@ struct ChatInputBar: View {
                     .font(.title2)
             }
             .buttonStyle(.plain)
-            .disabled(!vm.canSend(loadedLLM: loadedLLM))
+            .disabled(!vm.canSend(backend: backend))
         }
     }
 
     private func send() {
-        if let llm = loadedLLM { vm.send(using: llm) }
+        if let backend { vm.send(using: backend) }
     }
 
     private func startRecording() {
@@ -83,7 +83,7 @@ struct ChatInputBar: View {
     }
 
     private func stopAndTranscribe() {
-        guard let whisper = loadedWhisper else { return }
-        Task { await vm.stopAndTranscribe(using: whisper) }
+        guard let backend = transcribeBackend else { return }
+        Task { await vm.stopAndTranscribe(using: backend) }
     }
 }

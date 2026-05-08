@@ -13,6 +13,7 @@ struct ContentView: View {
     
     @Environment(ModelStore.self) private var store
     @Environment(PeerService.self) private var peerService
+    @Environment(BackendSelection.self) private var backendSelection
 
     var body: some View {
         TabView {
@@ -20,6 +21,7 @@ struct ContentView: View {
                 ChatView()
                     .environment(store)
                     .environment(peerService)
+                    .environment(backendSelection)
             }
             Tab("Models", systemImage: "shippingbox") {
                 ModelManagerView(store: store)
