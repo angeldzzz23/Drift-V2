@@ -10,15 +10,18 @@ import os
 import ModelKit
 import ModelKitMLX
 import ModelKitWhisper
+import Peerly
 
 @main
 struct DriftV2App: App {
+
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "DriftV2",
         category: "App"
     )
 
     @State private var store: ModelStore
+    @State private var peerService: PeerService
 
     init() {
         Self.logger.info("DriftV2 launching")
@@ -26,20 +29,48 @@ struct DriftV2App: App {
         let registry = ModelKindRegistry()
         ModelKitMLX.register(into: registry)
         ModelKitWhisper.register(into: registry)
-        _store = State(initialValue: ModelStore(registry: registry))
+        let modelStore = ModelStore(registry: registry)
+        _store = State(initialValue: modelStore)
 
-        Self.logger.info("Loaders registered: MLX (llm, vlm), Whisper")
+        let peer = PeerService()
+        peer.register(ChatService(store: modelStore))
+        peer.register(TranscribeService(store: modelStore))
+        _peerService = State(initialValue: peer)
+
+        Self.logger.info("Loaders registered: MLX (llm, vlm), Whisper. Peer services: drift.chat, drift.transcribe")
     }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(store)
+                .environment(peerService)
                 .task { await observeStoreEvents() }
+                .task { await refreshServicesOnModelEvents() }
         }
         #if os(macOS)
         .defaultSize(width: 720, height: 800)
         #endif
+    }
+
+    /// Re-register the affected service whenever a model's load state
+    /// changes. Peerly snapshots metadata at register time, so this is
+    /// what pushes fresh `status` / `model` / `displayName` to peers.
+    private func refreshServicesOnModelEvents() async {
+        for await event in store.events() {
+            switch event.type {
+            case .loadStarted, .loaded, .loadFailed, .unloaded,
+                 .downloadFinished, .downloadFailed, .deleted:
+                break
+            default:
+                continue
+            }
+            if event.modelKind == .llm {
+                peerService.register(ChatService(store: store))
+            } else if event.modelKind == .whisper {
+                peerService.register(TranscribeService(store: store))
+            }
+        }
     }
 
     /// Demo subscriber for the new `ModelStore.events()` AsyncStream API.

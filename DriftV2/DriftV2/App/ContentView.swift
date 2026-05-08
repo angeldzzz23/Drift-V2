@@ -7,15 +7,19 @@
 
 import SwiftUI
 import ModelKit
+import Peerly
 
 struct ContentView: View {
+    
     @Environment(ModelStore.self) private var store
+    @Environment(PeerService.self) private var peerService
 
     var body: some View {
         TabView {
             Tab("Chat", systemImage: "bubble.left.and.bubble.right") {
                 ChatView()
                     .environment(store)
+                    .environment(peerService)
             }
             Tab("Models", systemImage: "shippingbox") {
                 ModelManagerView(store: store)

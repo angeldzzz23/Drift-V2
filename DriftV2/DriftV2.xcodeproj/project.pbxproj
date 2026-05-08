@@ -10,6 +10,7 @@
 		08C529F02FAD4E0400807FE3 /* Pulse in Frameworks */ = {isa = PBXBuildFile; productRef = 08C529EF2FAD4E0400807FE3 /* Pulse */; };
 		08C529F22FAD4E0400807FE3 /* PulseProxy in Frameworks */ = {isa = PBXBuildFile; productRef = 08C529F12FAD4E0400807FE3 /* PulseProxy */; };
 		08C529F42FAD4E0400807FE3 /* PulseUI in Frameworks */ = {isa = PBXBuildFile; productRef = 08C529F32FAD4E0400807FE3 /* PulseUI */; };
+		08C52F652FAD6FEB00807FE3 /* Peerly in Frameworks */ = {isa = PBXBuildFile; productRef = 08C52F642FAD6FEB00807FE3 /* Peerly */; };
 		AABB000000000000000000A1 /* ModelKit in Frameworks */ = {isa = PBXBuildFile; productRef = AABB000000000000000000B1 /* ModelKit */; };
 		AABB000000000000000000A2 /* ModelKitMLX in Frameworks */ = {isa = PBXBuildFile; productRef = AABB000000000000000000B2 /* ModelKitMLX */; };
 		AABB000000000000000000A3 /* ModelKitWhisper in Frameworks */ = {isa = PBXBuildFile; productRef = AABB000000000000000000B3 /* ModelKitWhisper */; };
@@ -19,9 +20,22 @@
 		085EE24E2FAD2FE40044870B /* DriftV2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DriftV2.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		AABB000000000000000000E1 /* Exceptions for "DriftV2" folder in "DriftV2" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 085EE24D2FAD2FE40044870B /* DriftV2 */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		085EE2502FAD2FE40044870B /* DriftV2 */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AABB000000000000000000E1 /* Exceptions for "DriftV2" folder in "DriftV2" target */,
+			);
 			path = DriftV2;
 			sourceTree = "<group>";
 		};
@@ -38,6 +52,7 @@
 				AABB000000000000000000A2 /* ModelKitMLX in Frameworks */,
 				08C529F02FAD4E0400807FE3 /* Pulse in Frameworks */,
 				AABB000000000000000000A3 /* ModelKitWhisper in Frameworks */,
+				08C52F652FAD6FEB00807FE3 /* Peerly in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -86,6 +101,7 @@
 				08C529EF2FAD4E0400807FE3 /* Pulse */,
 				08C529F12FAD4E0400807FE3 /* PulseProxy */,
 				08C529F32FAD4E0400807FE3 /* PulseUI */,
+				08C52F642FAD6FEB00807FE3 /* Peerly */,
 			);
 			productName = DriftV2;
 			productReference = 085EE24E2FAD2FE40044870B /* DriftV2.app */;
@@ -118,6 +134,7 @@
 			packageReferences = (
 				AABB000000000000000000C1 /* XCLocalSwiftPackageReference "../../ModelKit/ModelKit" */,
 				08C529EE2FAD4E0400807FE3 /* XCRemoteSwiftPackageReference "Pulse" */,
+				08C52F632FAD6FEB00807FE3 /* XCLocalSwiftPackageReference "../../Gemma4Networking/Peerly" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 085EE24F2FAD2FE40044870B /* Products */;
@@ -279,18 +296,8 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "DriftV2 uses the microphone to transcribe speech via the loaded Whisper model.";
-				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
-				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
-				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
-				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
-				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DriftV2/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
@@ -325,18 +332,8 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "DriftV2 uses the microphone to transcribe speech via the loaded Whisper model.";
-				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
-				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
-				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
-				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
-				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = DriftV2/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
@@ -382,6 +379,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		08C52F632FAD6FEB00807FE3 /* XCLocalSwiftPackageReference "../../Gemma4Networking/Peerly" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Gemma4Networking/Peerly;
+		};
 		AABB000000000000000000C1 /* XCLocalSwiftPackageReference "../../ModelKit/ModelKit" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../ModelKit/ModelKit;
@@ -414,6 +415,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 08C529EE2FAD4E0400807FE3 /* XCRemoteSwiftPackageReference "Pulse" */;
 			productName = PulseUI;
+		};
+		08C52F642FAD6FEB00807FE3 /* Peerly */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Peerly;
 		};
 		AABB000000000000000000B1 /* ModelKit */ = {
 			isa = XCSwiftPackageProductDependency;

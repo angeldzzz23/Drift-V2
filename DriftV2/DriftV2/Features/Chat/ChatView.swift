@@ -7,10 +7,13 @@ import SwiftUI
 import ModelKit
 import ModelKitMLX
 import ModelKitWhisper
+import Peerly
 
 struct ChatView: View {
     @State private var vm = ChatViewModel()
+    @State private var showConnectionSheet = false
     @Environment(ModelStore.self) private var store
+    @Environment(PeerService.self) private var peerService
 
     var body: some View {
         @Bindable var vm = vm
@@ -29,6 +32,14 @@ struct ChatView: View {
             }
             .navigationTitle("Chat")
             .toolbar {
+                ToolbarItem(placement: .navigation) {
+                    Button {
+                        showConnectionSheet = true
+                    } label: {
+                        Label("Connections", systemImage: connectionIcon)
+                            .foregroundStyle(peerService.hasAnyConnection ? Color.accentColor : .secondary)
+                    }
+                }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         vm.clear()
@@ -37,6 +48,10 @@ struct ChatView: View {
                     }
                     .disabled(vm.messages.isEmpty)
                 }
+            }
+            .sheet(isPresented: $showConnectionSheet) {
+                ConnectionSheet()
+                    .environment(peerService)
             }
             .alert(
                 "Error",
@@ -94,9 +109,16 @@ struct ChatView: View {
             proxy.scrollTo(id, anchor: .bottom)
         }
     }
+
+    private var connectionIcon: String {
+        peerService.hasAnyConnection
+            ? "antenna.radiowaves.left.and.right.circle.fill"
+            : "antenna.radiowaves.left.and.right"
+    }
 }
 
 #Preview {
     ChatView()
         .environment(ModelStore(registry: ModelKindRegistry()))
+        .environment(PeerService())
 }
