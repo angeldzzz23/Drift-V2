@@ -8,6 +8,10 @@ import ModelKit
 
 struct ModelManagerView: View {
     @State private var vm: ModelManagerViewModel
+    /// Guards `.task` against re-firing on every tab switch. Modern
+    /// TabView preserves `@State` across tab visits, so this stays true
+    /// for the rest of the session once defaults have been kicked off.
+    @State private var didLoadDefaults = false
 
     init(store: ModelStore) {
         _vm = State(initialValue: ModelManagerViewModel(store: store))
@@ -45,6 +49,8 @@ struct ModelManagerView: View {
             .listStyle(.insetGrouped)
             #endif
             .task {
+                guard !didLoadDefaults else { return }
+                didLoadDefaults = true
                 await vm.loadDefaults()
             }
             .alert(

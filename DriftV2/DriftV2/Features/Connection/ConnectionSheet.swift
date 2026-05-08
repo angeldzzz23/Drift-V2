@@ -55,6 +55,13 @@ struct ConnectionSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button {
+                        dumpServicesAndStatus()
+                    } label: {
+                        Label("Print", systemImage: "ladybug")
+                    }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
@@ -104,6 +111,42 @@ struct ConnectionSheet: View {
             connectButton(for: peer, state: state)
         }
         .padding(.vertical, 4)
+    }
+
+    private func dumpServicesAndStatus() {
+        print("=== Local services (\(peerService.myPeer.displayName)) ===")
+        if peerService.advertisedServices.isEmpty {
+            print("  (none)")
+        }
+        
+        // this collect will print 
+        for service in peerService.advertisedServices {
+            print("  \(service.id)")
+            for (k, v) in service.metadata.sorted(by: { $0.key < $1.key }) {
+                print("    \(k) = \(v)")
+            }
+        }
+
+        print("=== Connected peers ===")
+        if peerService.connectedPeers.isEmpty {
+            print("  (none)")
+        }
+        for peer in peerService.connectedPeers {
+            print("  [\(peer.displayName)]")
+            guard let hello = peerService.peerHellos[peer.id] else {
+                print("    (no hello yet)")
+                continue
+            }
+            if hello.services.isEmpty {
+                print("    (no services)")
+            }
+            for service in hello.services {
+                print("    \(service.id)")
+                for (k, v) in service.metadata.sorted(by: { $0.key < $1.key }) {
+                    print("      \(k) = \(v)")
+                }
+            }
+        }
     }
 
     @ViewBuilder
