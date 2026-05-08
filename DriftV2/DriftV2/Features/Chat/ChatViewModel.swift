@@ -8,6 +8,7 @@ import Observation
 import os
 import ModelKit
 import ModelKitMLX
+import ModelKitWhisper
 
 struct ChatMessage: Identifiable, Hashable {
     let id = UUID()
@@ -24,9 +25,17 @@ final class ChatViewModel {
     )
 
     private var generationTask: Task<Void, Never>?
+    private let recorder = AudioRecorder()
 
     var messages: [ChatMessage] = []
     var draft: String = ""
+
+    /// True while the mic is actively recording.
+    private(set) var isRecording: Bool = false
+    /// True while a captured clip is being transcribed.
+    private(set) var isTranscribing: Bool = false
+    /// Surfaced to the view via an alert.
+    var lastError: String?
 
     var isGenerating: Bool { generationTask != nil }
 
@@ -34,6 +43,12 @@ final class ChatViewModel {
         loadedLLM != nil
             && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !isGenerating
+            && !isRecording
+            && !isTranscribing
+    }
+
+    func canRecord(loadedWhisper: WhisperModel?) -> Bool {
+        loadedWhisper != nil && !isRecording && !isTranscribing && !isGenerating
     }
 
     func send(using llm: LLMModel) {
@@ -78,6 +93,73 @@ final class ChatViewModel {
     func clear() {
         stop()
         messages.removeAll()
+    }
+
+    // MARK: - Mic / transcribe
+
+    func startRecording() async {
+        guard !isRecording, !isTranscribing, !isGenerating else { return }
+
+        let granted = await AudioRecorder.requestPermission()
+        guard granted else {
+            Self.logger.error("Mic permission denied")
+            lastError = "Microphone access denied. Enable it in Settings."
+            return
+        }
+
+        do {
+            try recorder.start()
+            isRecording = true
+            Self.logger.info("Recording started")
+        } catch {
+            Self.logger.error("Recording start failed: \(error.localizedDescription, privacy: .public)")
+            lastError = error.localizedDescription
+        }
+    }
+
+    func stopAndTranscribe(using model: WhisperModel) async {
+        guard isRecording, let url = recorder.stop() else {
+            isRecording = false
+            return
+        }
+        isRecording = false
+        isTranscribing = true
+        Self.logger.info("Recording stopped, transcribing with \(model.repoId, privacy: .public)")
+
+        defer {
+            isTranscribing = false
+            try? FileManager.default.removeItem(at: url)
+        }
+
+        do {
+            let text = try await model.transcribe(audioURL: url)
+            insertTranscribedText(text)
+            Self.logger.info("Transcribe done: \(text.count) chars")
+        } catch {
+            Self.logger.error("Transcribe failed: \(error.localizedDescription, privacy: .public)")
+            lastError = "Transcribe failed: \(error.localizedDescription)"
+        }
+    }
+
+    func cancelRecording() {
+        guard isRecording else { return }
+        recorder.cancel()
+        isRecording = false
+        Self.logger.info("Recording cancelled")
+    }
+
+    func clearError() { lastError = nil }
+
+    // MARK: - Private
+
+    private func insertTranscribedText(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            draft = trimmed
+        } else {
+            draft += " \(trimmed)"
+        }
     }
 
     private func appendToLastAssistant(_ chunk: String) {

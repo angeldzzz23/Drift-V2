@@ -5,24 +5,55 @@
 
 import SwiftUI
 import ModelKitMLX
+import ModelKitWhisper
 
 struct ChatInputBar: View {
     @Bindable var vm: ChatViewModel
     let loadedLLM: LLMModel?
+    let loadedWhisper: WhisperModel?
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
             TextField("Message", text: $vm.draft, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(1...5)
-                .disabled(loadedLLM == nil || vm.isGenerating)
+                .disabled(textFieldDisabled)
                 .onSubmit(send)
                 .submitLabel(.send)
 
+            micButton
             actionButton
         }
         .padding()
         .background(.bar)
+    }
+
+    private var textFieldDisabled: Bool {
+        loadedLLM == nil || vm.isGenerating || vm.isRecording || vm.isTranscribing
+    }
+
+    @ViewBuilder
+    private var micButton: some View {
+        if vm.isTranscribing {
+            ProgressView()
+                .controlSize(.small)
+                .frame(width: 28, height: 28)
+        } else if vm.isRecording {
+            Button(role: .destructive, action: stopAndTranscribe) {
+                Image(systemName: "stop.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.red)
+                    .symbolEffect(.pulse, options: .repeating)
+            }
+            .buttonStyle(.plain)
+        } else {
+            Button(action: startRecording) {
+                Image(systemName: "mic.fill")
+                    .font(.title2)
+            }
+            .buttonStyle(.plain)
+            .disabled(!vm.canRecord(loadedWhisper: loadedWhisper))
+        }
     }
 
     @ViewBuilder
@@ -45,5 +76,14 @@ struct ChatInputBar: View {
 
     private func send() {
         if let llm = loadedLLM { vm.send(using: llm) }
+    }
+
+    private func startRecording() {
+        Task { await vm.startRecording() }
+    }
+
+    private func stopAndTranscribe() {
+        guard let whisper = loadedWhisper else { return }
+        Task { await vm.stopAndTranscribe(using: whisper) }
     }
 }

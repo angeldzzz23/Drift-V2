@@ -6,13 +6,16 @@
 import SwiftUI
 import ModelKit
 import ModelKitMLX
+import ModelKitWhisper
 
 struct ChatView: View {
     @State private var vm = ChatViewModel()
     @Environment(ModelStore.self) private var store
 
     var body: some View {
+        @Bindable var vm = vm
         let loadedLLM = store.loadedModels[.llm] as? LLMModel
+        let loadedWhisper = store.loadedModels[.whisper] as? WhisperModel
 
         NavigationStack {
             VStack(spacing: 0) {
@@ -22,7 +25,7 @@ struct ChatView: View {
                     emptyState
                 }
                 Divider()
-                ChatInputBar(vm: vm, loadedLLM: loadedLLM)
+                ChatInputBar(vm: vm, loadedLLM: loadedLLM, loadedWhisper: loadedWhisper)
             }
             .navigationTitle("Chat")
             .toolbar {
@@ -34,6 +37,18 @@ struct ChatView: View {
                     }
                     .disabled(vm.messages.isEmpty)
                 }
+            }
+            .alert(
+                "Error",
+                isPresented: Binding(
+                    get: { vm.lastError != nil },
+                    set: { if !$0 { vm.clearError() } }
+                ),
+                presenting: vm.lastError
+            ) { _ in
+                Button("OK") { vm.clearError() }
+            } message: { msg in
+                Text(msg)
             }
         }
     }
