@@ -25,7 +25,12 @@ struct ChatView: View {
 
         NavigationStack {
             VStack(spacing: 0) {
-                if backend != nil {
+                // Show the chat scroll whenever there's history. Empty
+                // state is only for the very-first state (no backend +
+                // no messages) — otherwise mid-flight chunks would
+                // disappear behind it the moment `imageAttachment`
+                // clears and the resolved kind flips.
+                if !vm.messages.isEmpty || backend != nil {
                     chatScroll
                 } else {
                     emptyState
@@ -98,6 +103,9 @@ struct ChatView: View {
     }
 
     private var emptyStateTitle: String {
+        if vm.imageAttachment != nil {
+            return "No vision model available"
+        }
         let mode = selection.mode(for: .llm)
         let manual = selection.manualSource(for: .llm)
         switch mode {
@@ -111,6 +119,9 @@ struct ChatView: View {
     }
 
     private var emptyStateDescription: String {
+        if vm.imageAttachment != nil {
+            return "Image attachments need a VLM. Load a vision model from the Models tab, or pick a connected device with one loaded — or remove the image to chat with text only."
+        }
         let mode = selection.mode(for: .llm)
         let manual = selection.manualSource(for: .llm)
         switch mode {
@@ -129,23 +140,39 @@ struct ChatView: View {
         }
     }
 
-    /// Resolves the current backend from selection + live state. Returns
-    /// nil when nothing usable is available (no local LLM, peer gone,
-    /// peer hasn't loaded an LLM, etc.).
+    /// Resolves the current backend from selection + live state. When
+    /// an image is attached we resolve a `.vlm` backend; otherwise an
+    /// `.llm` backend. Returns nil when nothing usable is available.
     private var currentBackend: ChatBackend? {
+        let hasImage = vm.imageAttachment != nil
+        let kind: ServiceKind = hasImage ? .vlm : .llm
         let resolution = selection.resolve(
-            kind: .llm,
-            isLocallyReady: { store.loadedModels[.llm] != nil },
+            kind: kind,
+            isLocallyReady: {
+                hasImage
+                    ? store.loadedModels[.vlm] != nil
+                    : store.loadedModels[.llm] != nil
+            },
             peerService: peerService
         )
         switch resolution {
         case .local:
-            guard let llm = store.loadedModels[.llm] as? LLMModel else { return nil }
-            return .local(llm)
+            if hasImage {
+                guard let vlm = store.loadedModels[.vlm] as? VLMModel else { return nil }
+                return .localVLM(vlm)
+            } else {
+                guard let llm = store.loadedModels[.llm] as? LLMModel else { return nil }
+                return .localLLM(llm)
+            }
         case .remote(let peerId):
             guard let peer = peerService.connectedPeers.first(where: { $0.id == peerId }) else { return nil }
-            let client = peerService.client(of: ChatContract.self, on: peer)
-            return .remote(client: client, peerName: peer.displayName)
+            if hasImage {
+                let client = peerService.client(of: VLMChatContract.self, on: peer)
+                return .remoteVLM(client: client, peerName: peer.displayName)
+            } else {
+                let client = peerService.client(of: ChatContract.self, on: peer)
+                return .remoteLLM(client: client, peerName: peer.displayName)
+            }
         case .unavailable:
             return nil
         }

@@ -1,11 +1,14 @@
 //
-//  ChatService.swift
+//  VLMChatService.swift
 //  DriftV2
 //
-//  Wire schema + host-side stub for the `drift.chat` Peerly service.
-//  Metadata is computed live against `ModelStore` — but Peerly snapshots
-//  it at register-time, so the App re-calls `peerService.register(...)`
-//  on `.loaded` / `.unloaded` events to push fresh metadata to peers.
+//  Vision-capable chat host. Same wire schema as `ChatService`
+//  (`ChatRequest` / `ChatChunk`), different service id (`drift.vlm`)
+//  and a different `metadata["type"]` ("vlm" vs "llm") so the routing
+//  layer can pick it up independently. Reaches into `ModelStore` for a
+//  loaded `VLMModel` and runs the request — including any image bytes
+//  carried by `ChatRequest.images` — through
+//  `VLMModel.stream(turns:images:)`.
 //
 
 import Foundation
@@ -13,55 +16,9 @@ import Peerly
 import ModelKit
 import ModelKitMLX
 
-// MARK: - Wire types
-
-nonisolated struct ChatRequest: Codable, Sendable {
-    /// Full conversation history including the new user prompt as the
-    /// last turn. The host applies this verbatim to the loaded model.
-    let turns: [Turn]
-    /// Image attachments (JPEG/PNG bytes) bound to the latest user
-    /// turn. Empty for text-only LLM calls. The wire schema is shared
-    /// between `drift.chat` (LLM, ignores images) and `drift.vlm` (VLM,
-    /// requires non-empty images), so consumers can swap contracts
-    /// without re-encoding.
-    let images: [Data]
-
-    nonisolated struct Turn: Codable, Sendable {
-        /// `system` / `user` / `assistant`. Matches `ChatTurn.Role.rawValue`.
-        let role: String
-        let content: String
-    }
-
-    init(turns: [Turn], images: [Data] = []) {
-        self.turns = turns
-        self.images = images
-    }
-}
-
-nonisolated struct ChatChunk: Codable, Sendable {
-    let text: String
-}
-
-/// Text-only LLM service contract.
-nonisolated enum ChatContract: ServiceContract {
-    static let id = "drift.chat"
-    typealias Request = ChatRequest
-    typealias Response = ChatChunk
-}
-
-/// Vision-capable chat service contract. Same wire schema as
-/// `ChatContract` — the difference is only the host model used.
-nonisolated enum VLMChatContract: ServiceContract {
-    static let id = "drift.vlm"
-    typealias Request = ChatRequest
-    typealias Response = ChatChunk
-}
-
-// MARK: - Host stub
-
 @MainActor
-final class ChatService: Service {
-    typealias Contract = ChatContract
+final class VLMChatService: Service {
+    typealias Contract = VLMChatContract
 
     private weak var store: ModelStore?
     private weak var activityLog: HostActivityLog?
@@ -71,16 +28,14 @@ final class ChatService: Service {
         self.activityLog = activityLog
     }
 
-    /// Snapshotted by Peerly at every `peerService.register(self)` call.
-    /// Re-register from app code to refresh.
     var metadata: [String: String] {
-        var meta: [String: String] = ["type": "llm"]
+        var meta: [String: String] = ["type": "vlm"]
         guard let store else { return meta }
 
-        let loadedRepoId = (store.loadedModels[.llm] as? LLMModel)?.repoId
+        let loadedRepoId = (store.loadedModels[.vlm] as? VLMModel)?.repoId
 
         let models: [ServiceModelInfo] = Catalog.all
-            .filter { $0.kind == .llm && store.isDownloaded($0) }
+            .filter { $0.kind == .vlm && store.isDownloaded($0) }
             .sorted(by: { $0.displayName < $1.displayName })
             .map { entry in
                 let status: ServiceModelInfo.Status =
@@ -113,8 +68,8 @@ final class ChatService: Service {
                     continuation.finish(throwing: PeerError.remote("Host store gone."))
                     return
                 }
-                guard let llm = store.loadedModels[.llm] as? LLMModel else {
-                    continuation.finish(throwing: PeerError.remote("No LLM loaded on host."))
+                guard let vlm = store.loadedModels[.vlm] as? VLMModel else {
+                    continuation.finish(throwing: PeerError.remote("No VLM loaded on host."))
                     return
                 }
                 let turns = request.turns.compactMap { wire -> ChatTurn? in
@@ -127,14 +82,17 @@ final class ChatService: Service {
                 }
 
                 let lastUserPrompt = request.turns.last(where: { $0.role == "user" })?.content ?? ""
+                let imageSummary = request.images.isEmpty
+                    ? lastUserPrompt
+                    : "\(request.images.count) image(s) · \(lastUserPrompt)"
                 let sessionId = activityLog?.startSession(
-                    serviceID: ChatContract.id,
+                    serviceID: VLMChatContract.id,
                     peerName: context.peer.displayName,
-                    prompt: lastUserPrompt
+                    prompt: imageSummary
                 )
 
                 do {
-                    let stream = try await llm.stream(turns: turns)
+                    let stream = try await vlm.stream(turns: turns, images: request.images)
                     for await chunk in stream {
                         if Task.isCancelled { break }
                         continuation.yield(ChatChunk(text: chunk))

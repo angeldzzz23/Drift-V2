@@ -30,21 +30,39 @@ enum ChatImageAttachment: Hashable, Sendable {
     }
 }
 
-/// Where chat sends should go. Local runs against an in-memory `LLMModel`;
-/// remote calls a peer's `drift.chat` service via Peerly.
+/// Where chat sends should go. Two axes:
+///   • local vs remote — direct in-memory call vs Peerly stream
+///   • LLM vs VLM      — text-only vs vision-capable
+///
+/// `ChatView.currentBackend` picks the kind based on whether an image
+/// is attached; `ChatViewModel.send` switches on the case to dispatch
+/// to the right code path.
 enum ChatBackend {
-    case local(LLMModel)
-    case remote(client: ServiceClient<ChatContract>, peerName: String)
+    case localLLM(LLMModel)
+    case localVLM(VLMModel)
+    case remoteLLM(client: ServiceClient<ChatContract>, peerName: String)
+    case remoteVLM(client: ServiceClient<VLMChatContract>, peerName: String)
 
     var isLocal: Bool {
-        if case .local = self { return true }
-        return false
+        switch self {
+        case .localLLM, .localVLM: return true
+        case .remoteLLM, .remoteVLM: return false
+        }
+    }
+
+    var supportsImages: Bool {
+        switch self {
+        case .localVLM, .remoteVLM: return true
+        case .localLLM, .remoteLLM: return false
+        }
     }
 
     var displayName: String {
         switch self {
-        case .local: return "this device"
-        case .remote(_, let name): return name
+        case .localLLM, .localVLM:
+            return "this device"
+        case .remoteLLM(_, let name), .remoteVLM(_, let name):
+            return name
         }
     }
 }
@@ -96,14 +114,16 @@ final class ChatViewModel {
     var isGenerating: Bool { generationTask != nil }
 
     func canSend(backend: ChatBackend?) -> Bool {
-        backend != nil
-            && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && !isGenerating
-            && !isRecording
-            && !isTranscribing
-            // Send is gated while an image is attached — we don't ship
-            // images over the wire yet.
-            && imageAttachment == nil
+        guard backend != nil,
+              !isGenerating,
+              !isRecording,
+              !isTranscribing
+        else { return false }
+        // Need either text or an image. An image-only send is a valid
+        // VLM call ("describe this") — the wire layer handles it.
+        let hasDraft = !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasImage = imageAttachment != nil
+        return hasDraft || hasImage
     }
 
     func canAttachImage(loadedLLM: LLMModel?) -> Bool {
@@ -120,11 +140,14 @@ final class ChatViewModel {
         let prompt = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty, !isGenerating else { return }
 
-        Self.logger.info("Send: \(prompt.count) chars via \(backend.displayName, privacy: .public)")
+        // Snapshot the attachment now — it's consumed by this send.
+        let images: [Data] = imageAttachment.map { [$0.data] } ?? []
+        Self.logger.info("Send: \(prompt.count) chars, \(images.count) image(s) via \(backend.displayName, privacy: .public)")
 
         messages.append(ChatMessage(role: .user, text: prompt))
         messages.append(ChatMessage(role: .assistant, text: ""))
         draft = ""
+        imageAttachment = nil
 
         // Snapshot turns excluding the empty assistant placeholder.
         let turns = messages.dropLast().map { ChatTurn(role: $0.role, content: $0.text) }
@@ -133,16 +156,32 @@ final class ChatViewModel {
             guard let self else { return }
             do {
                 switch backend {
-                case .local(let llm):
+                case .localLLM(let llm):
                     let stream = try await llm.stream(turns: turns)
                     for await chunk in stream {
                         if Task.isCancelled { break }
                         self.appendToLastAssistant(chunk)
                     }
-                case .remote(let client, _):
-                    let wire = ChatRequest(turns: turns.map {
-                        ChatRequest.Turn(role: $0.role.rawValue, content: $0.content)
-                    })
+                case .localVLM(let vlm):
+                    let stream = try await vlm.stream(turns: turns, images: images)
+                    for await chunk in stream {
+                        if Task.isCancelled { break }
+                        self.appendToLastAssistant(chunk)
+                    }
+                case .remoteLLM(let client, _):
+                    let wire = ChatRequest(
+                        turns: turns.map { ChatRequest.Turn(role: $0.role.rawValue, content: $0.content) }
+                    )
+                    let stream = client.stream(wire)
+                    for try await chunk in stream {
+                        if Task.isCancelled { break }
+                        self.appendToLastAssistant(chunk.text)
+                    }
+                case .remoteVLM(let client, _):
+                    let wire = ChatRequest(
+                        turns: turns.map { ChatRequest.Turn(role: $0.role.rawValue, content: $0.content) },
+                        images: images
+                    )
                     let stream = client.stream(wire)
                     for try await chunk in stream {
                         if Task.isCancelled { break }
