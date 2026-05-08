@@ -13,6 +13,7 @@ import ModelKitWhisper
 
 @main
 struct DriftV2App: App {
+    
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "DriftV2",
         category: "App"

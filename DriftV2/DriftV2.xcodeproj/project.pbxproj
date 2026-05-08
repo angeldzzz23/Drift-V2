@@ -10,6 +10,7 @@
 		08C529F02FAD4E0400807FE3 /* Pulse in Frameworks */ = {isa = PBXBuildFile; productRef = 08C529EF2FAD4E0400807FE3 /* Pulse */; };
 		08C529F22FAD4E0400807FE3 /* PulseProxy in Frameworks */ = {isa = PBXBuildFile; productRef = 08C529F12FAD4E0400807FE3 /* PulseProxy */; };
 		08C529F42FAD4E0400807FE3 /* PulseUI in Frameworks */ = {isa = PBXBuildFile; productRef = 08C529F32FAD4E0400807FE3 /* PulseUI */; };
+		08C52F652FAD6FEB00807FE3 /* Peerly in Frameworks */ = {isa = PBXBuildFile; productRef = 08C52F642FAD6FEB00807FE3 /* Peerly */; };
 		AABB000000000000000000A1 /* ModelKit in Frameworks */ = {isa = PBXBuildFile; productRef = AABB000000000000000000B1 /* ModelKit */; };
 		AABB000000000000000000A2 /* ModelKitMLX in Frameworks */ = {isa = PBXBuildFile; productRef = AABB000000000000000000B2 /* ModelKitMLX */; };
 		AABB000000000000000000A3 /* ModelKitWhisper in Frameworks */ = {isa = PBXBuildFile; productRef = AABB000000000000000000B3 /* ModelKitWhisper */; };
@@ -38,6 +39,7 @@
 				AABB000000000000000000A2 /* ModelKitMLX in Frameworks */,
 				08C529F02FAD4E0400807FE3 /* Pulse in Frameworks */,
 				AABB000000000000000000A3 /* ModelKitWhisper in Frameworks */,
+				08C52F652FAD6FEB00807FE3 /* Peerly in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -86,6 +88,7 @@
 				08C529EF2FAD4E0400807FE3 /* Pulse */,
 				08C529F12FAD4E0400807FE3 /* PulseProxy */,
 				08C529F32FAD4E0400807FE3 /* PulseUI */,
+				08C52F642FAD6FEB00807FE3 /* Peerly */,
 			);
 			productName = DriftV2;
 			productReference = 085EE24E2FAD2FE40044870B /* DriftV2.app */;
@@ -118,6 +121,7 @@
 			packageReferences = (
 				AABB000000000000000000C1 /* XCLocalSwiftPackageReference "../../ModelKit/ModelKit" */,
 				08C529EE2FAD4E0400807FE3 /* XCRemoteSwiftPackageReference "Pulse" */,
+				08C52F632FAD6FEB00807FE3 /* XCLocalSwiftPackageReference "../../Gemma4Networking/Peerly" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 085EE24F2FAD2FE40044870B /* Products */;
@@ -382,6 +386,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		08C52F632FAD6FEB00807FE3 /* XCLocalSwiftPackageReference "../../Gemma4Networking/Peerly" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Gemma4Networking/Peerly;
+		};
 		AABB000000000000000000C1 /* XCLocalSwiftPackageReference "../../ModelKit/ModelKit" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../ModelKit/ModelKit;
@@ -414,6 +422,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 08C529EE2FAD4E0400807FE3 /* XCRemoteSwiftPackageReference "Pulse" */;
 			productName = PulseUI;
+		};
+		08C52F642FAD6FEB00807FE3 /* Peerly */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Peerly;
 		};
 		AABB000000000000000000B1 /* ModelKit */ = {
 			isa = XCSwiftPackageProductDependency;
