@@ -22,7 +22,7 @@ struct DriftV2App: App {
 
     @State private var store: ModelStore
     @State private var peerService: PeerService
-    @State private var backendSelection = BackendSelection()
+    @State private var backendSelection = RoutingPolicySelection()
     @State private var hostActivityLog = HostActivityLog()
     /// Strong refs kept so Peerly's `[weak service]` capture in
     /// `RegisteredService.from` doesn't see a dealloc'd instance. We

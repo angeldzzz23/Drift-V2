@@ -15,7 +15,7 @@ struct ChatView: View {
     @State private var showActivitySheet = false
     @Environment(ModelStore.self) private var store
     @Environment(PeerService.self) private var peerService
-    @Environment(BackendSelection.self) private var selection
+    @Environment(RoutingPolicySelection.self) private var selection
     @Environment(HostActivityLog.self) private var hostActivityLog
 
     var body: some View {
@@ -98,8 +98,10 @@ struct ChatView: View {
     }
 
     private var emptyStateTitle: String {
-        switch selection.llmMode {
-        case .manual where selection.manualLLM == .local:
+        let mode = selection.mode(for: .llm)
+        let manual = selection.manualSource(for: .llm)
+        switch mode {
+        case .manual where manual == .local:
             return "No LLM loaded"
         case .manual:
             return "Remote LLM unavailable"
@@ -109,9 +111,11 @@ struct ChatView: View {
     }
 
     private var emptyStateDescription: String {
-        switch selection.llmMode {
+        let mode = selection.mode(for: .llm)
+        let manual = selection.manualSource(for: .llm)
+        switch mode {
         case .manual:
-            switch selection.manualLLM {
+            switch manual {
             case .local:
                 return "Load an LLM from the Models tab, or pick a connected device's LLM in the Connections sheet."
             case .remote(let peerId):
@@ -129,7 +133,11 @@ struct ChatView: View {
     /// nil when nothing usable is available (no local LLM, peer gone,
     /// peer hasn't loaded an LLM, etc.).
     private var currentBackend: ChatBackend? {
-        let resolution = selection.resolveLLM(store: store, peerService: peerService)
+        let resolution = selection.resolve(
+            kind: .llm,
+            isLocallyReady: { store.loadedModels[.llm] != nil },
+            peerService: peerService
+        )
         switch resolution {
         case .local:
             guard let llm = store.loadedModels[.llm] as? LLMModel else { return nil }
@@ -145,7 +153,11 @@ struct ChatView: View {
 
     /// Where the mic should send recorded audio for transcription.
     private var currentTranscribeBackend: TranscribeBackend? {
-        let resolution = selection.resolveWhisper(store: store, peerService: peerService)
+        let resolution = selection.resolve(
+            kind: .whisper,
+            isLocallyReady: { store.loadedModels[.whisper] != nil },
+            peerService: peerService
+        )
         switch resolution {
         case .local:
             guard let whisper = store.loadedModels[.whisper] as? WhisperModel else { return nil }
@@ -231,6 +243,6 @@ struct ChatView: View {
     ChatView()
         .environment(ModelStore(registry: ModelKindRegistry()))
         .environment(PeerService())
-        .environment(BackendSelection())
+        .environment(RoutingPolicySelection())
         .environment(HostActivityLog())
 }

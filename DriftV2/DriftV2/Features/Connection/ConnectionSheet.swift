@@ -10,30 +10,26 @@ import Peerly
 struct ConnectionSheet: View {
     @Environment(ModelStore.self) private var store
     @Environment(PeerService.self) private var peerService
-    @Environment(BackendSelection.self) private var selection
+    @Environment(RoutingPolicySelection.self) private var selection
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        @Bindable var selection = selection
-        let llmResolution = selection.resolveLLM(store: store, peerService: peerService)
-        let whisperResolution = selection.resolveWhisper(store: store, peerService: peerService)
+        let llmResolution = selection.resolve(
+            kind: .llm,
+            isLocallyReady: { store.loadedModels[.llm] != nil },
+            peerService: peerService
+        )
+        let whisperResolution = selection.resolve(
+            kind: .whisper,
+            isLocallyReady: { store.loadedModels[.whisper] != nil },
+            peerService: peerService
+        )
 
         NavigationStack {
             List {
                 Section {
-                    Picker("Chat", selection: $selection.llmMode) {
-                        ForEach(BackendSelection.AutoMode.allCases, id: \.self) { mode in
-                            Text(mode.label).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-
-                    Picker("Transcribe", selection: $selection.whisperMode) {
-                        ForEach(BackendSelection.AutoMode.allCases, id: \.self) { mode in
-                            Text(mode.label).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
+                    modePicker("Chat", kind: .llm)
+                    modePicker("Transcribe", kind: .whisper)
                 } header: {
                     Text("Routing")
                 } footer: {
@@ -114,8 +110,8 @@ struct ConnectionSheet: View {
     @ViewBuilder
     private func connectedRow(
         for peer: Peer,
-        llmResolution: BackendSelection.Resolution,
-        whisperResolution: BackendSelection.Resolution
+        llmResolution: Resolution,
+        whisperResolution: Resolution
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             DeviceCard(
@@ -165,7 +161,9 @@ struct ConnectionSheet: View {
     }
 
     private var routingFooter: String {
-        switch (selection.llmMode, selection.whisperMode) {
+        let llm = selection.mode(for: .llm)
+        let whisper = selection.mode(for: .whisper)
+        switch (llm, whisper) {
         case (.manual, .manual):
             return "Pick a service below with \"Use for chat\" / \"Use for transcription\"."
         case (.auto, _), (_, .auto):
@@ -173,6 +171,18 @@ struct ConnectionSheet: View {
         case (.autoBySpecs, _), (_, .autoBySpecs):
             return "Auto + Specs picks whichever candidate has the most memory; falls back to local."
         }
+    }
+
+    private func modePicker(_ title: String, kind: ServiceKind) -> some View {
+        Picker(title, selection: Binding(
+            get: { selection.mode(for: kind) },
+            set: { selection.setMode($0, for: kind) }
+        )) {
+            ForEach(AutoMode.allCases, id: \.self) { mode in
+                Text(mode.label).tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
     }
 
     /// Curated key order for readable metadata dumps. Anything not listed
@@ -266,5 +276,5 @@ struct ConnectionSheet: View {
     ConnectionSheet()
         .environment(ModelStore(registry: ModelKindRegistry()))
         .environment(PeerService())
-        .environment(BackendSelection())
+        .environment(RoutingPolicySelection())
 }
