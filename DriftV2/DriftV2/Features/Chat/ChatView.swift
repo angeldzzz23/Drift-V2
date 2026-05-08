@@ -65,6 +65,7 @@ struct ChatView: View {
             }
             .sheet(isPresented: $showConnectionSheet) {
                 ConnectionSheet()
+                    .environment(store)
                     .environment(peerService)
                     .environment(selection)
             }
@@ -97,21 +98,30 @@ struct ChatView: View {
     }
 
     private var emptyStateTitle: String {
-        switch selection.llm {
-        case .local: return "No LLM loaded"
-        case .remote: return "Remote LLM unavailable"
+        switch selection.llmMode {
+        case .manual where selection.manualLLM == .local:
+            return "No LLM loaded"
+        case .manual:
+            return "Remote LLM unavailable"
+        case .auto, .autoBySpecs:
+            return "No LLM available"
         }
     }
 
     private var emptyStateDescription: String {
-        switch selection.llm {
-        case .local:
-            return "Load an LLM from the Models tab, or pick a connected device's LLM in the Connections sheet."
-        case .remote(let peerId):
-            if peerService.connectedPeers.contains(where: { $0.id == peerId }) {
-                return "Selected peer hasn't loaded an LLM yet."
+        switch selection.llmMode {
+        case .manual:
+            switch selection.manualLLM {
+            case .local:
+                return "Load an LLM from the Models tab, or pick a connected device's LLM in the Connections sheet."
+            case .remote(let peerId):
+                if peerService.connectedPeers.contains(where: { $0.id == peerId }) {
+                    return "Selected peer hasn't loaded an LLM yet."
+                }
+                return "Selected peer is no longer connected. Pick a different source in the Connections sheet."
             }
-            return "Selected peer is no longer connected. Pick a different source in the Connections sheet."
+        case .auto, .autoBySpecs:
+            return "Auto routing has no candidates: no connected peer has an LLM loaded and there's nothing local. Load one or connect to a peer with one loaded."
         }
     }
 
@@ -119,43 +129,34 @@ struct ChatView: View {
     /// nil when nothing usable is available (no local LLM, peer gone,
     /// peer hasn't loaded an LLM, etc.).
     private var currentBackend: ChatBackend? {
-        switch selection.llm {
+        let resolution = selection.resolveLLM(store: store, peerService: peerService)
+        switch resolution {
         case .local:
             guard let llm = store.loadedModels[.llm] as? LLMModel else { return nil }
             return .local(llm)
         case .remote(let peerId):
             guard let peer = peerService.connectedPeers.first(where: { $0.id == peerId }) else { return nil }
-            guard peerHasLoaded(type: "llm", peerId: peer.id) else { return nil }
             let client = peerService.client(of: ChatContract.self, on: peer)
             return .remote(client: client, peerName: peer.displayName)
+        case .unavailable:
+            return nil
         }
     }
 
     /// Where the mic should send recorded audio for transcription.
     private var currentTranscribeBackend: TranscribeBackend? {
-        switch selection.whisper {
+        let resolution = selection.resolveWhisper(store: store, peerService: peerService)
+        switch resolution {
         case .local:
             guard let whisper = store.loadedModels[.whisper] as? WhisperModel else { return nil }
             return .local(whisper)
         case .remote(let peerId):
             guard let peer = peerService.connectedPeers.first(where: { $0.id == peerId }) else { return nil }
-            guard peerHasLoaded(type: "whisper", peerId: peer.id) else { return nil }
             let client = peerService.client(of: TranscribeContract.self, on: peer)
             return .remote(client: client, peerName: peer.displayName)
+        case .unavailable:
+            return nil
         }
-    }
-
-    /// True if the peer's hello reports a service of `type` with at least
-    /// one `.loaded` model.
-    private func peerHasLoaded(type: String, peerId: Peer.ID) -> Bool {
-        peerService.peerHellos[peerId]?.services.contains { service in
-            guard service.metadata["type"] == type else { return false }
-            guard let json = service.metadata["models"],
-                  let data = json.data(using: .utf8),
-                  let models = try? JSONDecoder().decode([ServiceModelInfo].self, from: data)
-            else { return false }
-            return models.contains { $0.status == .loaded }
-        } ?? false
     }
 
     private func backendPill(_ backend: ChatBackend) -> some View {

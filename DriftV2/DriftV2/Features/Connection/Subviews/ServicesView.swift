@@ -20,6 +20,11 @@ enum ServiceSource: Hashable {
 struct ServicesView: View {
     let services: [ServiceCapability]
     let source: ServiceSource
+    /// Resolved choices from `BackendSelection` (live, recomputed by the
+    /// caller every body pass). Used to highlight the auto-picked service
+    /// when not in manual mode.
+    let llmResolution: BackendSelection.Resolution
+    let whisperResolution: BackendSelection.Resolution
 
     @Environment(BackendSelection.self) private var selection
 
@@ -55,13 +60,17 @@ struct ServicesView: View {
                 }
                 if service.metadata["type"] == "llm" {
                     selectionPill(
-                        isSelected: isSelectedAsLLM,
+                        mode: selection.llmMode,
+                        manuallySelected: isManuallySelectedAsLLM,
+                        autoMatchesThis: autoLLMMatchesThis,
                         title: "Use for chat",
                         action: applyLLMSelection
                     )
                 } else if service.metadata["type"] == "whisper" {
                     selectionPill(
-                        isSelected: isSelectedAsWhisper,
+                        mode: selection.whisperMode,
+                        manuallySelected: isManuallySelectedAsWhisper,
+                        autoMatchesThis: autoWhisperMatchesThis,
                         title: "Use for transcription",
                         action: applyWhisperSelection
                     )
@@ -84,37 +93,68 @@ struct ServicesView: View {
 
     @ViewBuilder
     private func selectionPill(
-        isSelected: Bool,
+        mode: BackendSelection.AutoMode,
+        manuallySelected: Bool,
+        autoMatchesThis: Bool,
         title: String,
         action: @escaping () -> Void
     ) -> some View {
-        if isSelected {
-            Label("In use", systemImage: "checkmark.circle.fill")
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(.green)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(Color.green.opacity(0.12), in: Capsule())
-        } else {
-            Button(action: action) {
-                Text(title)
+        switch mode {
+        case .manual:
+            if manuallySelected {
+                inUsePill(title: "In use", color: .green)
+            } else {
+                Button(action: action) {
+                    Text(title)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+        case .auto, .autoBySpecs:
+            if autoMatchesThis {
+                inUsePill(title: "Auto-selected", color: .blue)
+            } else {
+                EmptyView()
+            }
         }
     }
 
-    private var isSelectedAsLLM: Bool {
+    private func inUsePill(title: String, color: Color) -> some View {
+        Label(title, systemImage: "checkmark.circle.fill")
+            .font(.caption2.weight(.medium))
+            .foregroundStyle(color)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(color.opacity(0.12), in: Capsule())
+    }
+
+    private var isManuallySelectedAsLLM: Bool {
         switch source {
-        case .local: return selection.isUsingLocalLLM
-        case .remote(let peer): return selection.isUsingRemoteLLM(on: peer.id)
+        case .local: return selection.isManuallyUsingLocalLLM
+        case .remote(let peer): return selection.isManuallyUsingRemoteLLM(on: peer.id)
         }
     }
 
-    private var isSelectedAsWhisper: Bool {
+    private var isManuallySelectedAsWhisper: Bool {
         switch source {
-        case .local: return selection.isUsingLocalWhisper
-        case .remote(let peer): return selection.isUsingRemoteWhisper(on: peer.id)
+        case .local: return selection.isManuallyUsingLocalWhisper
+        case .remote(let peer): return selection.isManuallyUsingRemoteWhisper(on: peer.id)
+        }
+    }
+
+    private var autoLLMMatchesThis: Bool {
+        switch (source, llmResolution) {
+        case (.local, .local): return true
+        case (.remote(let peer), .remote(let peerId)): return peer.id == peerId
+        default: return false
+        }
+    }
+
+    private var autoWhisperMatchesThis: Bool {
+        switch (source, whisperResolution) {
+        case (.local, .local): return true
+        case (.remote(let peer), .remote(let peerId)): return peer.id == peerId
+        default: return false
         }
     }
 
