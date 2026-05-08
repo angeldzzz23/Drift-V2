@@ -9,11 +9,31 @@ import os
 import ModelKit
 import ModelKitMLX
 import ModelKitWhisper
+import Peerly
 
 struct ChatMessage: Identifiable, Hashable {
     let id = UUID()
     let role: ChatTurn.Role
     var text: String
+}
+
+/// Where chat sends should go. Local runs against an in-memory `LLMModel`;
+/// remote calls a peer's `drift.chat` service via Peerly.
+enum ChatBackend {
+    case local(LLMModel)
+    case remote(client: ServiceClient<ChatContract>, peerName: String)
+
+    var isLocal: Bool {
+        if case .local = self { return true }
+        return false
+    }
+
+    var displayName: String {
+        switch self {
+        case .local: return "this device"
+        case .remote(_, let name): return name
+        }
+    }
 }
 
 @Observable
@@ -39,8 +59,8 @@ final class ChatViewModel {
 
     var isGenerating: Bool { generationTask != nil }
 
-    func canSend(loadedLLM: LLMModel?) -> Bool {
-        loadedLLM != nil
+    func canSend(backend: ChatBackend?) -> Bool {
+        backend != nil
             && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !isGenerating
             && !isRecording
@@ -51,11 +71,11 @@ final class ChatViewModel {
         loadedWhisper != nil && !isRecording && !isTranscribing && !isGenerating
     }
 
-    func send(using llm: LLMModel) {
+    func send(using backend: ChatBackend) {
         let prompt = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty, !isGenerating else { return }
 
-        Self.logger.info("Send: \(prompt.count) chars, model \(llm.repoId, privacy: .public)")
+        Self.logger.info("Send: \(prompt.count) chars via \(backend.displayName, privacy: .public)")
 
         messages.append(ChatMessage(role: .user, text: prompt))
         messages.append(ChatMessage(role: .assistant, text: ""))
@@ -67,10 +87,22 @@ final class ChatViewModel {
         generationTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let stream = try await llm.stream(turns: turns)
-                for await chunk in stream {
-                    if Task.isCancelled { break }
-                    self.appendToLastAssistant(chunk)
+                switch backend {
+                case .local(let llm):
+                    let stream = try await llm.stream(turns: turns)
+                    for await chunk in stream {
+                        if Task.isCancelled { break }
+                        self.appendToLastAssistant(chunk)
+                    }
+                case .remote(let client, _):
+                    let wire = ChatRequest(turns: turns.map {
+                        ChatRequest.Turn(role: $0.role.rawValue, content: $0.content)
+                    })
+                    let stream = client.stream(wire)
+                    for try await chunk in stream {
+                        if Task.isCancelled { break }
+                        self.appendToLastAssistant(chunk.text)
+                    }
                 }
                 Self.logger.info("Generation finished")
             } catch is CancellationError {

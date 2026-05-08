@@ -14,21 +14,25 @@ struct ChatView: View {
     @State private var showConnectionSheet = false
     @Environment(ModelStore.self) private var store
     @Environment(PeerService.self) private var peerService
+    @Environment(BackendSelection.self) private var selection
 
     var body: some View {
         @Bindable var vm = vm
-        let loadedLLM = store.loadedModels[.llm] as? LLMModel
+        let backend = currentBackend
         let loadedWhisper = store.loadedModels[.whisper] as? WhisperModel
 
         NavigationStack {
             VStack(spacing: 0) {
-                if loadedLLM != nil {
+                if backend != nil {
                     chatScroll
                 } else {
                     emptyState
                 }
                 Divider()
-                ChatInputBar(vm: vm, loadedLLM: loadedLLM, loadedWhisper: loadedWhisper)
+                if let backend {
+                    backendPill(backend)
+                }
+                ChatInputBar(vm: vm, backend: backend, loadedWhisper: loadedWhisper)
             }
             .navigationTitle("Chat")
             .toolbar {
@@ -52,6 +56,7 @@ struct ChatView: View {
             .sheet(isPresented: $showConnectionSheet) {
                 ConnectionSheet()
                     .environment(peerService)
+                    .environment(selection)
             }
             .alert(
                 "Error",
@@ -70,11 +75,72 @@ struct ChatView: View {
 
     private var emptyState: some View {
         ContentUnavailableView(
-            "No LLM loaded",
+            emptyStateTitle,
             systemImage: "brain",
-            description: Text("Load an LLM from the Models tab to start chatting.")
+            description: Text(emptyStateDescription)
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var emptyStateTitle: String {
+        switch selection.llm {
+        case .local: return "No LLM loaded"
+        case .remote: return "Remote LLM unavailable"
+        }
+    }
+
+    private var emptyStateDescription: String {
+        switch selection.llm {
+        case .local:
+            return "Load an LLM from the Models tab, or pick a connected device's LLM in the Connections sheet."
+        case .remote(let peerId):
+            if peerService.connectedPeers.contains(where: { $0.id == peerId }) {
+                return "Selected peer hasn't loaded an LLM yet."
+            }
+            return "Selected peer is no longer connected. Pick a different source in the Connections sheet."
+        }
+    }
+
+    /// Resolves the current backend from selection + live state. Returns
+    /// nil when nothing usable is available (no local LLM, peer gone,
+    /// peer hasn't loaded an LLM, etc.).
+    private var currentBackend: ChatBackend? {
+        switch selection.llm {
+        case .local:
+            guard let llm = store.loadedModels[.llm] as? LLMModel else { return nil }
+            return .local(llm)
+        case .remote(let peerId):
+            guard let peer = peerService.connectedPeers.first(where: { $0.id == peerId }) else { return nil }
+            // Only useful if the peer says they actually have an LLM ready.
+            let hasReadyLLM = peerService.peerHellos[peer.id]?.services.contains { service in
+                guard service.metadata["type"] == "llm" else { return false }
+                guard let json = service.metadata["models"],
+                      let data = json.data(using: .utf8),
+                      let models = try? JSONDecoder().decode([ServiceModelInfo].self, from: data)
+                else { return false }
+                return models.contains { $0.status == .loaded }
+            } ?? false
+            guard hasReadyLLM else { return nil }
+            let client = peerService.client(of: ChatContract.self, on: peer)
+            return .remote(client: client, peerName: peer.displayName)
+        }
+    }
+
+    private func backendPill(_ backend: ChatBackend) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: backend.isLocal ? "iphone" : "antenna.radiowaves.left.and.right")
+                .foregroundStyle(.secondary)
+            Text("Using ").foregroundStyle(.secondary)
+                + Text(backend.displayName).foregroundStyle(.primary).bold()
+            Spacer()
+            Button("Change") { showConnectionSheet = true }
+                .buttonStyle(.plain)
+                .foregroundStyle(.tint)
+        }
+        .font(.caption)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(.thinMaterial)
     }
 
     private var chatScroll: some View {
@@ -121,4 +187,5 @@ struct ChatView: View {
     ChatView()
         .environment(ModelStore(registry: ModelKindRegistry()))
         .environment(PeerService())
+        .environment(BackendSelection())
 }

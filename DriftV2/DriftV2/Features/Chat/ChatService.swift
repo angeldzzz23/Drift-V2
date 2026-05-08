@@ -16,7 +16,15 @@ import ModelKitMLX
 // MARK: - Wire types
 
 nonisolated struct ChatRequest: Codable, Sendable {
-    let text: String
+    /// Full conversation history including the new user prompt as the
+    /// last turn. The host applies this verbatim to the loaded LLM.
+    let turns: [Turn]
+
+    nonisolated struct Turn: Codable, Sendable {
+        /// `system` / `user` / `assistant`. Matches `ChatTurn.Role.rawValue`.
+        let role: String
+        let content: String
+    }
 }
 
 nonisolated struct ChatChunk: Codable, Sendable {
@@ -78,7 +86,37 @@ final class ChatService: Service {
         context: ServiceCallContext
     ) -> AsyncThrowingStream<ChatChunk, Error> {
         AsyncThrowingStream { continuation in
-            continuation.finish(throwing: PeerError.remote("Chat service not yet wired."))
+            let task = Task { @MainActor [weak store] in
+                guard let store else {
+                    continuation.finish(throwing: PeerError.remote("Host store gone."))
+                    return
+                }
+                guard let llm = store.loadedModels[.llm] as? LLMModel else {
+                    continuation.finish(throwing: PeerError.remote("No LLM loaded on host."))
+                    return
+                }
+                let turns = request.turns.compactMap { wire -> ChatTurn? in
+                    guard let role = ChatTurn.Role(rawValue: wire.role) else { return nil }
+                    return ChatTurn(role: role, content: wire.content)
+                }
+                guard !turns.isEmpty else {
+                    continuation.finish(throwing: PeerError.remote("Empty conversation."))
+                    return
+                }
+                do {
+                    let stream = try await llm.stream(turns: turns)
+                    for await chunk in stream {
+                        if Task.isCancelled { break }
+                        continuation.yield(ChatChunk(text: chunk))
+                    }
+                    continuation.finish()
+                } catch is CancellationError {
+                    continuation.finish(throwing: CancellationError())
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
         }
     }
 }

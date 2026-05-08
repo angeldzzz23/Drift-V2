@@ -22,6 +22,13 @@ struct DriftV2App: App {
 
     @State private var store: ModelStore
     @State private var peerService: PeerService
+    @State private var backendSelection = BackendSelection()
+    /// Strong refs kept so Peerly's `[weak service]` capture in
+    /// `RegisteredService.from` doesn't see a dealloc'd instance. We
+    /// re-register these same instances on model events to refresh the
+    /// metadata snapshot Peerly stores.
+    @State private var chatService: ChatService
+    @State private var transcribeService: TranscribeService
 
     init() {
         Self.logger.info("DriftV2 launching")
@@ -32,10 +39,15 @@ struct DriftV2App: App {
         let modelStore = ModelStore(registry: registry)
         _store = State(initialValue: modelStore)
 
+        let chat = ChatService(store: modelStore)
+        let transcribe = TranscribeService(store: modelStore)
+
         let peer = PeerService()
-        peer.register(ChatService(store: modelStore))
-        peer.register(TranscribeService(store: modelStore))
+        peer.register(chat)
+        peer.register(transcribe)
         _peerService = State(initialValue: peer)
+        _chatService = State(initialValue: chat)
+        _transcribeService = State(initialValue: transcribe)
 
         Self.logger.info("Loaders registered: MLX (llm, vlm), Whisper. Peer services: drift.chat, drift.transcribe")
     }
@@ -45,6 +57,7 @@ struct DriftV2App: App {
             ContentView()
                 .environment(store)
                 .environment(peerService)
+                .environment(backendSelection)
                 .task { await observeStoreEvents() }
                 .task { await refreshServicesOnModelEvents() }
         }
@@ -66,9 +79,9 @@ struct DriftV2App: App {
                 continue
             }
             if event.modelKind == .llm {
-                peerService.register(ChatService(store: store))
+                peerService.register(chatService)
             } else if event.modelKind == .whisper {
-                peerService.register(TranscribeService(store: store))
+                peerService.register(transcribeService)
             }
         }
     }

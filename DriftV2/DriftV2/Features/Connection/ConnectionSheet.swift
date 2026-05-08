@@ -19,7 +19,7 @@ struct ConnectionSheet: View {
                         subtitle: "Local",
                         profile: peerService.myProfile
                     )
-                    ServicesView(services: peerService.advertisedServices)
+                    ServicesView(services: peerService.advertisedServices, source: .local)
                 }
 
                 if !peerService.connectedPeers.isEmpty {
@@ -84,7 +84,7 @@ struct ConnectionSheet: View {
                 profile: peerService.peerHellos[peer.id]?.profile
             )
             if let hello = peerService.peerHellos[peer.id] {
-                ServicesView(services: hello.services)
+                ServicesView(services: hello.services, source: .remote(peer))
             }
             HStack {
                 Spacer()
@@ -209,4 +209,5 @@ struct ConnectionSheet: View {
 #Preview {
     ConnectionSheet()
         .environment(PeerService())
+        .environment(BackendSelection())
 }
