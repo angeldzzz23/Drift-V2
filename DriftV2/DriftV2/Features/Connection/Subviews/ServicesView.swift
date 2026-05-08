@@ -54,7 +54,17 @@ struct ServicesView: View {
                         .background(.gray.opacity(0.15), in: Capsule())
                 }
                 if service.metadata["type"] == "llm" {
-                    llmUseButton
+                    selectionPill(
+                        isSelected: isSelectedAsLLM,
+                        title: "Use for chat",
+                        action: applyLLMSelection
+                    )
+                } else if service.metadata["type"] == "whisper" {
+                    selectionPill(
+                        isSelected: isSelectedAsWhisper,
+                        title: "Use for transcription",
+                        action: applyWhisperSelection
+                    )
                 }
             }
 
@@ -73,8 +83,12 @@ struct ServicesView: View {
     }
 
     @ViewBuilder
-    private var llmUseButton: some View {
-        if isSelectedAsLLM {
+    private func selectionPill(
+        isSelected: Bool,
+        title: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        if isSelected {
             Label("In use", systemImage: "checkmark.circle.fill")
                 .font(.caption2.weight(.medium))
                 .foregroundStyle(.green)
@@ -82,10 +96,8 @@ struct ServicesView: View {
                 .padding(.vertical, 3)
                 .background(Color.green.opacity(0.12), in: Capsule())
         } else {
-            Button {
-                applyLLMSelection()
-            } label: {
-                Text("Use for chat")
+            Button(action: action) {
+                Text(title)
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
@@ -99,10 +111,24 @@ struct ServicesView: View {
         }
     }
 
+    private var isSelectedAsWhisper: Bool {
+        switch source {
+        case .local: return selection.isUsingLocalWhisper
+        case .remote(let peer): return selection.isUsingRemoteWhisper(on: peer.id)
+        }
+    }
+
     private func applyLLMSelection() {
         switch source {
         case .local: selection.useLocalLLM()
         case .remote(let peer): selection.useRemoteLLM(on: peer)
+        }
+    }
+
+    private func applyWhisperSelection() {
+        switch source {
+        case .local: selection.useLocalWhisper()
+        case .remote(let peer): selection.useRemoteWhisper(on: peer)
         }
     }
 

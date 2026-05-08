@@ -36,6 +36,26 @@ enum ChatBackend {
     }
 }
 
+/// Where the recorded audio should go for transcription. Local runs the
+/// in-memory `WhisperModel`; remote sends bytes to a peer's
+/// `drift.transcribe` service.
+enum TranscribeBackend {
+    case local(WhisperModel)
+    case remote(client: ServiceClient<TranscribeContract>, peerName: String)
+
+    var isLocal: Bool {
+        if case .local = self { return true }
+        return false
+    }
+
+    var displayName: String {
+        switch self {
+        case .local: return "this device"
+        case .remote(_, let name): return name
+        }
+    }
+}
+
 @Observable
 @MainActor
 final class ChatViewModel {
@@ -67,8 +87,8 @@ final class ChatViewModel {
             && !isTranscribing
     }
 
-    func canRecord(loadedWhisper: WhisperModel?) -> Bool {
-        loadedWhisper != nil && !isRecording && !isTranscribing && !isGenerating
+    func canRecord(transcribeBackend: TranscribeBackend?) -> Bool {
+        transcribeBackend != nil && !isRecording && !isTranscribing && !isGenerating
     }
 
     func send(using backend: ChatBackend) {
@@ -149,14 +169,14 @@ final class ChatViewModel {
         }
     }
 
-    func stopAndTranscribe(using model: WhisperModel) async {
+    func stopAndTranscribe(using backend: TranscribeBackend) async {
         guard isRecording, let url = recorder.stop() else {
             isRecording = false
             return
         }
         isRecording = false
         isTranscribing = true
-        Self.logger.info("Recording stopped, transcribing with \(model.repoId, privacy: .public)")
+        Self.logger.info("Recording stopped, transcribing via \(backend.displayName, privacy: .public)")
 
         defer {
             isTranscribing = false
@@ -164,7 +184,19 @@ final class ChatViewModel {
         }
 
         do {
-            let text = try await model.transcribe(audioURL: url)
+            let text: String
+            switch backend {
+            case .local(let model):
+                text = try await model.transcribe(audioURL: url)
+            case .remote(let client, _):
+                let audioData = try Data(contentsOf: url)
+                let stream = client.stream(TranscribeRequest(audio: audioData))
+                var accumulated = ""
+                for try await chunk in stream {
+                    accumulated += chunk.text
+                }
+                text = accumulated
+            }
             insertTranscribedText(text)
             Self.logger.info("Transcribe done: \(text.count) chars")
         } catch {

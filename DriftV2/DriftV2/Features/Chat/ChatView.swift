@@ -21,7 +21,7 @@ struct ChatView: View {
     var body: some View {
         @Bindable var vm = vm
         let backend = currentBackend
-        let loadedWhisper = store.loadedModels[.whisper] as? WhisperModel
+        let transcribeBackend = currentTranscribeBackend
 
         NavigationStack {
             VStack(spacing: 0) {
@@ -34,7 +34,7 @@ struct ChatView: View {
                 if let backend {
                     backendPill(backend)
                 }
-                ChatInputBar(vm: vm, backend: backend, loadedWhisper: loadedWhisper)
+                ChatInputBar(vm: vm, backend: backend, transcribeBackend: transcribeBackend)
             }
             .navigationTitle("Chat")
             .toolbar {
@@ -125,19 +125,37 @@ struct ChatView: View {
             return .local(llm)
         case .remote(let peerId):
             guard let peer = peerService.connectedPeers.first(where: { $0.id == peerId }) else { return nil }
-            // Only useful if the peer says they actually have an LLM ready.
-            let hasReadyLLM = peerService.peerHellos[peer.id]?.services.contains { service in
-                guard service.metadata["type"] == "llm" else { return false }
-                guard let json = service.metadata["models"],
-                      let data = json.data(using: .utf8),
-                      let models = try? JSONDecoder().decode([ServiceModelInfo].self, from: data)
-                else { return false }
-                return models.contains { $0.status == .loaded }
-            } ?? false
-            guard hasReadyLLM else { return nil }
+            guard peerHasLoaded(type: "llm", peerId: peer.id) else { return nil }
             let client = peerService.client(of: ChatContract.self, on: peer)
             return .remote(client: client, peerName: peer.displayName)
         }
+    }
+
+    /// Where the mic should send recorded audio for transcription.
+    private var currentTranscribeBackend: TranscribeBackend? {
+        switch selection.whisper {
+        case .local:
+            guard let whisper = store.loadedModels[.whisper] as? WhisperModel else { return nil }
+            return .local(whisper)
+        case .remote(let peerId):
+            guard let peer = peerService.connectedPeers.first(where: { $0.id == peerId }) else { return nil }
+            guard peerHasLoaded(type: "whisper", peerId: peer.id) else { return nil }
+            let client = peerService.client(of: TranscribeContract.self, on: peer)
+            return .remote(client: client, peerName: peer.displayName)
+        }
+    }
+
+    /// True if the peer's hello reports a service of `type` with at least
+    /// one `.loaded` model.
+    private func peerHasLoaded(type: String, peerId: Peer.ID) -> Bool {
+        peerService.peerHellos[peerId]?.services.contains { service in
+            guard service.metadata["type"] == type else { return false }
+            guard let json = service.metadata["models"],
+                  let data = json.data(using: .utf8),
+                  let models = try? JSONDecoder().decode([ServiceModelInfo].self, from: data)
+            else { return false }
+            return models.contains { $0.status == .loaded }
+        } ?? false
     }
 
     private func backendPill(_ backend: ChatBackend) -> some View {

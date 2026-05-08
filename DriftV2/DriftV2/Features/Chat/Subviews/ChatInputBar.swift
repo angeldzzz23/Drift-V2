@@ -10,7 +10,7 @@ import ModelKitWhisper
 struct ChatInputBar: View {
     @Bindable var vm: ChatViewModel
     let backend: ChatBackend?
-    let loadedWhisper: WhisperModel?
+    let transcribeBackend: TranscribeBackend?
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -52,7 +52,7 @@ struct ChatInputBar: View {
                     .font(.title2)
             }
             .buttonStyle(.plain)
-            .disabled(!vm.canRecord(loadedWhisper: loadedWhisper))
+            .disabled(!vm.canRecord(transcribeBackend: transcribeBackend))
         }
     }
 
@@ -83,7 +83,7 @@ struct ChatInputBar: View {
     }
 
     private func stopAndTranscribe() {
-        guard let whisper = loadedWhisper else { return }
-        Task { await vm.stopAndTranscribe(using: whisper) }
+        guard let backend = transcribeBackend else { return }
+        Task { await vm.stopAndTranscribe(using: backend) }
     }
 }

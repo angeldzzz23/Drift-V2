@@ -44,7 +44,7 @@ struct DriftV2App: App {
         _hostActivityLog = State(initialValue: activity)
 
         let chat = ChatService(store: modelStore, activityLog: activity)
-        let transcribe = TranscribeService(store: modelStore)
+        let transcribe = TranscribeService(store: modelStore, activityLog: activity)
 
         let peer = PeerService()
         peer.register(chat)

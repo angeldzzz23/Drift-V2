@@ -38,9 +38,11 @@ final class TranscribeService: Service {
     typealias Contract = TranscribeContract
 
     private weak var store: ModelStore?
+    private weak var activityLog: HostActivityLog?
 
-    init(store: ModelStore) {
+    init(store: ModelStore, activityLog: HostActivityLog? = nil) {
         self.store = store
+        self.activityLog = activityLog
     }
 
     var metadata: [String: String] {
@@ -78,7 +80,56 @@ final class TranscribeService: Service {
         context: ServiceCallContext
     ) -> AsyncThrowingStream<TranscribeChunk, Error> {
         AsyncThrowingStream { continuation in
-            continuation.finish(throwing: PeerError.remote("Transcribe service not yet wired."))
+            let task = Task { @MainActor [weak store, weak activityLog] in
+                guard let store else {
+                    continuation.finish(throwing: PeerError.remote("Host store gone."))
+                    return
+                }
+                guard let whisper = store.loadedModels[.whisper] as? WhisperModel else {
+                    continuation.finish(throwing: PeerError.remote("No Whisper model loaded on host."))
+                    return
+                }
+
+                let sessionId = activityLog?.startSession(
+                    serviceID: TranscribeContract.id,
+                    peerName: context.peer.displayName,
+                    prompt: "\(request.audio.count) bytes of audio"
+                )
+
+                let url = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("incoming_\(UUID().uuidString).m4a")
+
+                do {
+                    try request.audio.write(to: url)
+                } catch {
+                    continuation.finish(throwing: error)
+                    if let sessionId { activityLog?.fail(sessionId, message: error.localizedDescription) }
+                    return
+                }
+                defer { try? FileManager.default.removeItem(at: url) }
+
+                do {
+                    let text = try await whisper.transcribe(audioURL: url)
+                    if Task.isCancelled {
+                        continuation.finish(throwing: CancellationError())
+                        if let sessionId { activityLog?.cancel(sessionId) }
+                        return
+                    }
+                    continuation.yield(TranscribeChunk(text: text))
+                    continuation.finish()
+                    if let sessionId {
+                        activityLog?.append(text, to: sessionId)
+                        activityLog?.finish(sessionId)
+                    }
+                } catch is CancellationError {
+                    continuation.finish(throwing: CancellationError())
+                    if let sessionId { activityLog?.cancel(sessionId) }
+                } catch {
+                    continuation.finish(throwing: error)
+                    if let sessionId { activityLog?.fail(sessionId, message: error.localizedDescription) }
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
         }
     }
 }
