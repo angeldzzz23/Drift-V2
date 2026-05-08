@@ -23,6 +23,7 @@ struct DriftV2App: App {
     @State private var store: ModelStore
     @State private var peerService: PeerService
     @State private var backendSelection = BackendSelection()
+    @State private var hostActivityLog = HostActivityLog()
     /// Strong refs kept so Peerly's `[weak service]` capture in
     /// `RegisteredService.from` doesn't see a dealloc'd instance. We
     /// re-register these same instances on model events to refresh the
@@ -39,7 +40,10 @@ struct DriftV2App: App {
         let modelStore = ModelStore(registry: registry)
         _store = State(initialValue: modelStore)
 
-        let chat = ChatService(store: modelStore)
+        let activity = HostActivityLog()
+        _hostActivityLog = State(initialValue: activity)
+
+        let chat = ChatService(store: modelStore, activityLog: activity)
         let transcribe = TranscribeService(store: modelStore)
 
         let peer = PeerService()
@@ -58,6 +62,7 @@ struct DriftV2App: App {
                 .environment(store)
                 .environment(peerService)
                 .environment(backendSelection)
+                .environment(hostActivityLog)
                 .task { await observeStoreEvents() }
                 .task { await refreshServicesOnModelEvents() }
         }

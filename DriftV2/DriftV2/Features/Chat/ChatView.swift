@@ -12,9 +12,11 @@ import Peerly
 struct ChatView: View {
     @State private var vm = ChatViewModel()
     @State private var showConnectionSheet = false
+    @State private var showActivitySheet = false
     @Environment(ModelStore.self) private var store
     @Environment(PeerService.self) private var peerService
     @Environment(BackendSelection.self) private var selection
+    @Environment(HostActivityLog.self) private var hostActivityLog
 
     var body: some View {
         @Bindable var vm = vm
@@ -46,6 +48,14 @@ struct ChatView: View {
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
+                        showActivitySheet = true
+                    } label: {
+                        Label("Hosted activity", systemImage: hostActivityIcon)
+                            .foregroundStyle(hasRunningHostSession ? Color.accentColor : .primary)
+                    }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
                         vm.clear()
                     } label: {
                         Label("Clear", systemImage: "trash")
@@ -57,6 +67,10 @@ struct ChatView: View {
                 ConnectionSheet()
                     .environment(peerService)
                     .environment(selection)
+            }
+            .sheet(isPresented: $showActivitySheet) {
+                HostActivityView()
+                    .environment(hostActivityLog)
             }
             .alert(
                 "Error",
@@ -181,6 +195,17 @@ struct ChatView: View {
             ? "antenna.radiowaves.left.and.right.circle.fill"
             : "antenna.radiowaves.left.and.right"
     }
+
+    private var hasRunningHostSession: Bool {
+        hostActivityLog.sessions.contains { session in
+            if case .running = session.status { return true }
+            return false
+        }
+    }
+
+    private var hostActivityIcon: String {
+        hasRunningHostSession ? "server.rack" : "server.rack"
+    }
 }
 
 #Preview {
@@ -188,4 +213,5 @@ struct ChatView: View {
         .environment(ModelStore(registry: ModelKindRegistry()))
         .environment(PeerService())
         .environment(BackendSelection())
+        .environment(HostActivityLog())
 }

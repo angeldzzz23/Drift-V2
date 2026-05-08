@@ -44,9 +44,11 @@ final class ChatService: Service {
     typealias Contract = ChatContract
 
     private weak var store: ModelStore?
+    private weak var activityLog: HostActivityLog?
 
-    init(store: ModelStore) {
+    init(store: ModelStore, activityLog: HostActivityLog? = nil) {
         self.store = store
+        self.activityLog = activityLog
     }
 
     /// Snapshotted by Peerly at every `peerService.register(self)` call.
@@ -86,7 +88,7 @@ final class ChatService: Service {
         context: ServiceCallContext
     ) -> AsyncThrowingStream<ChatChunk, Error> {
         AsyncThrowingStream { continuation in
-            let task = Task { @MainActor [weak store] in
+            let task = Task { @MainActor [weak store, weak activityLog] in
                 guard let store else {
                     continuation.finish(throwing: PeerError.remote("Host store gone."))
                     return
@@ -103,17 +105,31 @@ final class ChatService: Service {
                     continuation.finish(throwing: PeerError.remote("Empty conversation."))
                     return
                 }
+
+                let lastUserPrompt = request.turns.last(where: { $0.role == "user" })?.content ?? ""
+                let sessionId = activityLog?.startSession(
+                    serviceID: ChatContract.id,
+                    peerName: context.peer.displayName,
+                    prompt: lastUserPrompt
+                )
+
                 do {
                     let stream = try await llm.stream(turns: turns)
                     for await chunk in stream {
                         if Task.isCancelled { break }
                         continuation.yield(ChatChunk(text: chunk))
+                        if let sessionId {
+                            activityLog?.append(chunk, to: sessionId)
+                        }
                     }
                     continuation.finish()
+                    if let sessionId { activityLog?.finish(sessionId) }
                 } catch is CancellationError {
                     continuation.finish(throwing: CancellationError())
+                    if let sessionId { activityLog?.cancel(sessionId) }
                 } catch {
                     continuation.finish(throwing: error)
+                    if let sessionId { activityLog?.fail(sessionId, message: error.localizedDescription) }
                 }
             }
             continuation.onTermination = { _ in task.cancel() }
