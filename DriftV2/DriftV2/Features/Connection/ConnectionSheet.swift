@@ -19,6 +19,11 @@ struct ConnectionSheet: View {
             isLocallyReady: { store.loadedModels[.llm] != nil },
             peerService: peerService
         )
+        let vlmResolution = selection.resolve(
+            kind: .vlm,
+            isLocallyReady: { store.loadedModels[.vlm] != nil },
+            peerService: peerService
+        )
         let whisperResolution = selection.resolve(
             kind: .whisper,
             isLocallyReady: { store.loadedModels[.whisper] != nil },
@@ -29,6 +34,7 @@ struct ConnectionSheet: View {
             List {
                 Section {
                     modePicker("Chat", kind: .llm)
+                    modePicker("Vision Chat", kind: .vlm)
                     modePicker("Transcribe", kind: .whisper)
                 } header: {
                     Text("Routing")
@@ -46,6 +52,7 @@ struct ConnectionSheet: View {
                         services: peerService.advertisedServices,
                         source: .local,
                         llmResolution: llmResolution,
+                        vlmResolution: vlmResolution,
                         whisperResolution: whisperResolution
                     )
                 }
@@ -56,6 +63,7 @@ struct ConnectionSheet: View {
                             connectedRow(
                                 for: peer,
                                 llmResolution: llmResolution,
+                                vlmResolution: vlmResolution,
                                 whisperResolution: whisperResolution
                             )
                         }
@@ -111,6 +119,7 @@ struct ConnectionSheet: View {
     private func connectedRow(
         for peer: Peer,
         llmResolution: Resolution,
+        vlmResolution: Resolution,
         whisperResolution: Resolution
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -124,6 +133,7 @@ struct ConnectionSheet: View {
                     services: hello.services,
                     source: .remote(peer),
                     llmResolution: llmResolution,
+                    vlmResolution: vlmResolution,
                     whisperResolution: whisperResolution
                 )
             }

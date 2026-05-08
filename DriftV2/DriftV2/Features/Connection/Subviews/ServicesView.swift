@@ -24,6 +24,7 @@ struct ServicesView: View {
     /// caller every body pass). Used to highlight the auto-picked service
     /// when not in manual mode.
     let llmResolution: Resolution
+    let vlmResolution: Resolution
     let whisperResolution: Resolution
 
     @Environment(RoutingPolicySelection.self) private var selection
@@ -124,6 +125,7 @@ struct ServicesView: View {
     private func pillTitle(for kind: ServiceKind) -> String {
         switch kind {
         case .llm:     return "Use for chat"
+        case .vlm:     return "Use for vision chat"
         case .whisper: return "Use for transcription"
         default:       return "Use \(kind.id)"
         }
@@ -142,6 +144,7 @@ struct ServicesView: View {
         let resolution: Resolution
         switch kind {
         case .llm:     resolution = llmResolution
+        case .vlm:     resolution = vlmResolution
         case .whisper: resolution = whisperResolution
         default:       return false
         }

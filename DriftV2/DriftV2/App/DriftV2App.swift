@@ -28,6 +28,7 @@ struct DriftV2App: App {
     /// re-register these same instances on model events to refresh the
     /// metadata snapshot Peerly stores.
     @State private var chatService: ChatService
+    @State private var vlmChatService: VLMChatService
     @State private var transcribeService: TranscribeService
 
     init() {
@@ -43,16 +44,19 @@ struct DriftV2App: App {
         _hostActivityLog = State(initialValue: activity)
 
         let chat = ChatService(store: modelStore, activityLog: activity)
+        let vlmChat = VLMChatService(store: modelStore, activityLog: activity)
         let transcribe = TranscribeService(store: modelStore, activityLog: activity)
 
         let peer = PeerService()
         peer.register(chat)
+        peer.register(vlmChat)
         peer.register(transcribe)
         _peerService = State(initialValue: peer)
         _chatService = State(initialValue: chat)
+        _vlmChatService = State(initialValue: vlmChat)
         _transcribeService = State(initialValue: transcribe)
 
-        Self.logger.info("Loaders registered: MLX (llm, vlm), Whisper. Peer services: drift.chat, drift.transcribe")
+        Self.logger.info("Loaders registered: MLX (llm, vlm), Whisper. Peer services: drift.chat, drift.vlm, drift.transcribe")
     }
 
     var body: some Scene {
@@ -84,6 +88,8 @@ struct DriftV2App: App {
             }
             if event.modelKind == .llm {
                 peerService.register(chatService)
+            } else if event.modelKind == .vlm {
+                peerService.register(vlmChatService)
             } else if event.modelKind == .whisper {
                 peerService.register(transcribeService)
             }
