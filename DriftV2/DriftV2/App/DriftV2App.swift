@@ -17,12 +17,11 @@ struct DriftV2App: App {
 
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "DriftV2",
-        category: "App"
-    )
-
-    @State private var store: ModelStore
-    @State private var peerService: PeerService
-    @State private var backendSelection = BackendSelection()
+        category: "App")
+ 
+    @State private var store: ModelStore // deals with models
+    @State private var peerService: PeerService // deals with communication with devices. Transport layer mainly. Model aganostic
+    @State private var backendSelection = RoutingPolicySelection() // is in charge of model selection between devices
     @State private var hostActivityLog = HostActivityLog()
     /// Strong refs kept so Peerly's `[weak service]` capture in
     /// `RegisteredService.from` doesn't see a dealloc'd instance. We

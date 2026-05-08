@@ -13,7 +13,7 @@ struct ContentView: View {
     
     @Environment(ModelStore.self) private var store
     @Environment(PeerService.self) private var peerService
-    @Environment(BackendSelection.self) private var backendSelection
+    @Environment(RoutingPolicySelection.self) private var backendSelection
 
     var body: some View {
         TabView {
