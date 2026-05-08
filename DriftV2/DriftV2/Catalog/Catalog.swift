@@ -50,6 +50,13 @@ enum Catalog {
             note: "Vision-capable — accepts images."
         ),
         .init(
+            "mlx-community/gemma-4-e2b-it-4bit",
+            "Gemma 4 e2b IT (Vision)",
+            .vlm,
+            1.5,
+            .phone
+        ),
+        .init(
             "mlx-community/gemma-3-4b-it-qat-4bit",
             "Gemma 3 4B Vision",
             .vlm,
