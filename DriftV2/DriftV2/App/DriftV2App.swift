@@ -35,9 +35,25 @@ struct DriftV2App: App {
         WindowGroup {
             ContentView()
                 .environment(store)
+                .task { await observeStoreEvents() }
         }
         #if os(macOS)
         .defaultSize(width: 720, height: 800)
         #endif
+    }
+
+    /// Demo subscriber for the new `ModelStore.events()` AsyncStream API.
+    /// Mirrors every state change to `os.Logger` under the `Events`
+    /// category — visible in Xcode console and Console.app. Multiple
+    /// subscribers are supported; this is one of them.
+    private func observeStoreEvents() async {
+        let logger = Logger(
+            subsystem: Bundle.main.bundleIdentifier ?? "DriftV2",
+            category: "Events"
+        )
+        for await event in store.events() {
+            print("HELLO: type=\(event.type.rawValue) entry=\(event.entry?.repoId ?? "n/a") kind=\(event.modelKind.id)")
+            logger.info("\(event.description, privacy: .public)")
+        }
     }
 }
