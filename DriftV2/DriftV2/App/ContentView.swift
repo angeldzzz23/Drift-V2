@@ -12,7 +12,15 @@ struct ContentView: View {
     @Environment(ModelStore.self) private var store
 
     var body: some View {
-        ModelManagerView(store: store)
+        TabView {
+            Tab("Chat", systemImage: "bubble.left.and.bubble.right") {
+                ChatView()
+                    .environment(store)
+            }
+            Tab("Models", systemImage: "shippingbox") {
+                ModelManagerView(store: store)
+            }
+        }
     }
 }
 
