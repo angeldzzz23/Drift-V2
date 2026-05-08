@@ -19,6 +19,7 @@ struct ConnectionSheet: View {
                         subtitle: "Local",
                         profile: peerService.myProfile
                     )
+                    ServicesView(services: peerService.advertisedServices)
                 }
 
                 if !peerService.connectedPeers.isEmpty {
@@ -80,6 +81,9 @@ struct ConnectionSheet: View {
                 subtitle: peerService.peerHellos[peer.id]?.profile?.summary,
                 profile: peerService.peerHellos[peer.id]?.profile
             )
+            if let hello = peerService.peerHellos[peer.id] {
+                ServicesView(services: hello.services)
+            }
             HStack {
                 Spacer()
                 Button(role: .destructive) {
@@ -113,18 +117,48 @@ struct ConnectionSheet: View {
         .padding(.vertical, 4)
     }
 
+    /// Curated key order for readable metadata dumps. Anything not listed
+    /// falls to alphabetical order at the end.
+    private static let metadataKeyOrder = ["type", "status", "models"]
+
+    private func printMetadata(_ metadata: [String: String], indent: String) {
+        let known = Self.metadataKeyOrder.filter { metadata[$0] != nil }
+        let rest = metadata.keys
+            .filter { !Self.metadataKeyOrder.contains($0) }
+            .sorted()
+        for key in known + rest {
+            guard let value = metadata[key] else { continue }
+            if let pretty = prettyJSON(value) {
+                print("\(indent)\(key) =")
+                for line in pretty.split(separator: "\n", omittingEmptySubsequences: false) {
+                    print("\(indent)  \(line)")
+                }
+            } else {
+                print("\(indent)\(key) = \(value)")
+            }
+        }
+    }
+
+    private func prettyJSON(_ s: String) -> String? {
+        guard let data = s.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]),
+              let pretty = try? JSONSerialization.data(
+                  withJSONObject: obj,
+                  options: [.prettyPrinted, .sortedKeys]
+              ),
+              let str = String(data: pretty, encoding: .utf8)
+        else { return nil }
+        return str
+    }
+
     private func dumpServicesAndStatus() {
         print("=== Local services (\(peerService.myPeer.displayName)) ===")
         if peerService.advertisedServices.isEmpty {
             print("  (none)")
         }
-        
-        // this collect will print 
         for service in peerService.advertisedServices {
             print("  \(service.id)")
-            for (k, v) in service.metadata.sorted(by: { $0.key < $1.key }) {
-                print("    \(k) = \(v)")
-            }
+            printMetadata(service.metadata, indent: "    ")
         }
 
         print("=== Connected peers ===")
@@ -142,9 +176,7 @@ struct ConnectionSheet: View {
             }
             for service in hello.services {
                 print("    \(service.id)")
-                for (k, v) in service.metadata.sorted(by: { $0.key < $1.key }) {
-                    print("      \(k) = \(v)")
-                }
+                printMetadata(service.metadata, indent: "      ")
             }
         }
     }

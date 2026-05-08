@@ -44,29 +44,31 @@ final class TranscribeService: Service {
     }
 
     var metadata: [String: String] {
-        guard let store else { return ["status": "no-model"] }
+        var meta: [String: String] = ["type": "whisper"]
+        guard let store else { return meta }
 
-        if let loadingEntry = Catalog.all.first(where: {
-            $0.kind == .whisper && store.loadingEntryIds.contains($0.id)
-        }) {
-            return [
-                "status": "loading",
-                "model": loadingEntry.repoId,
-                "displayName": loadingEntry.displayName,
-            ]
-        }
+        let loadedRepoId = (store.loadedModels[.whisper] as? WhisperModel)?.repoId
 
-        guard let whisper = store.loadedModels[.whisper] as? WhisperModel else {
-            return ["status": "no-model"]
-        }
-        var meta: [String: String] = [
-            "status": "ready",
-            "model": whisper.repoId,
-        ]
-        if let entry = Catalog.all.first(where: { $0.repoId == whisper.repoId && $0.kind == .whisper }) {
-            meta["displayName"] = entry.displayName
-            meta["sizeGB"] = String(format: "%.1f", entry.approxSizeGB)
-            meta["minTier"] = entry.minTier.label
+        let models: [ServiceModelInfo] = Catalog.all
+            .filter { $0.kind == .whisper && store.isDownloaded($0) }
+            .sorted(by: { $0.displayName < $1.displayName })
+            .map { entry in
+                let status: ServiceModelInfo.Status =
+                    store.loadingEntryIds.contains(entry.id) ? .loading
+                    : entry.repoId == loadedRepoId ? .loaded
+                    : .idle
+                return ServiceModelInfo(
+                    id: entry.repoId,
+                    name: entry.displayName,
+                    sizeGB: entry.approxSizeGB,
+                    minTier: entry.minTier.label,
+                    status: status
+                )
+            }
+
+        if let data = try? JSONEncoder().encode(models),
+           let json = String(data: data, encoding: .utf8) {
+            meta["models"] = json
         }
         return meta
     }

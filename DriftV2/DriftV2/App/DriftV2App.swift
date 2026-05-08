@@ -59,7 +59,8 @@ struct DriftV2App: App {
     private func refreshServicesOnModelEvents() async {
         for await event in store.events() {
             switch event.type {
-            case .loadStarted, .loaded, .loadFailed, .unloaded:
+            case .loadStarted, .loaded, .loadFailed, .unloaded,
+                 .downloadFinished, .downloadFailed, .deleted:
                 break
             default:
                 continue

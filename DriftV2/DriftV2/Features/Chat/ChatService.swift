@@ -44,31 +44,31 @@ final class ChatService: Service {
     /// Snapshotted by Peerly at every `peerService.register(self)` call.
     /// Re-register from app code to refresh.
     var metadata: [String: String] {
-        guard let store else { return ["status": "no-model"] }
+        var meta: [String: String] = ["type": "llm"]
+        guard let store else { return meta }
 
-        // Loading takes priority over a previously-loaded model — at the
-        // start of `load(_:)` the previous loaded entry is dropped.
-        if let loadingEntry = Catalog.all.first(where: {
-            $0.kind == .llm && store.loadingEntryIds.contains($0.id)
-        }) {
-            return [
-                "status": "loading",
-                "model": loadingEntry.repoId,
-                "displayName": loadingEntry.displayName,
-            ]
-        }
+        let loadedRepoId = (store.loadedModels[.llm] as? LLMModel)?.repoId
 
-        guard let llm = store.loadedModels[.llm] as? LLMModel else {
-            return ["status": "no-model"]
-        }
-        var meta: [String: String] = [
-            "status": "ready",
-            "model": llm.repoId,
-        ]
-        if let entry = Catalog.all.first(where: { $0.repoId == llm.repoId && $0.kind == .llm }) {
-            meta["displayName"] = entry.displayName
-            meta["sizeGB"] = String(format: "%.1f", entry.approxSizeGB)
-            meta["minTier"] = entry.minTier.label
+        let models: [ServiceModelInfo] = Catalog.all
+            .filter { $0.kind == .llm && store.isDownloaded($0) }
+            .sorted(by: { $0.displayName < $1.displayName })
+            .map { entry in
+                let status: ServiceModelInfo.Status =
+                    store.loadingEntryIds.contains(entry.id) ? .loading
+                    : entry.repoId == loadedRepoId ? .loaded
+                    : .idle
+                return ServiceModelInfo(
+                    id: entry.repoId,
+                    name: entry.displayName,
+                    sizeGB: entry.approxSizeGB,
+                    minTier: entry.minTier.label,
+                    status: status
+                )
+            }
+
+        if let data = try? JSONEncoder().encode(models),
+           let json = String(data: data, encoding: .utf8) {
+            meta["models"] = json
         }
         return meta
     }
