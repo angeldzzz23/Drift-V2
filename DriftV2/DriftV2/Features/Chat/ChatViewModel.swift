@@ -17,6 +17,19 @@ struct ChatMessage: Identifiable, Hashable {
     var text: String
 }
 
+/// What's pinned to the next outgoing message. Carries already-encoded
+/// JPEG/PNG bytes so the wire layer doesn't have to know about UIImage
+/// or NSImage.
+enum ChatImageAttachment: Hashable, Sendable {
+    case data(Data)
+
+    var data: Data {
+        switch self {
+        case .data(let data): return data
+        }
+    }
+}
+
 /// Where chat sends should go. Local runs against an in-memory `LLMModel`;
 /// remote calls a peer's `drift.chat` service via Peerly.
 enum ChatBackend {
@@ -69,6 +82,9 @@ final class ChatViewModel {
 
     var messages: [ChatMessage] = []
     var draft: String = ""
+    /// Image pinned to the next message. Send is disabled while this is
+    /// non-nil (we don't ship images yet).
+    var imageAttachment: ChatImageAttachment?
 
     /// True while the mic is actively recording.
     private(set) var isRecording: Bool = false
@@ -85,6 +101,15 @@ final class ChatViewModel {
             && !isGenerating
             && !isRecording
             && !isTranscribing
+            // Send is gated while an image is attached — we don't ship
+            // images over the wire yet.
+            && imageAttachment == nil
+    }
+
+    func canAttachImage(loadedLLM: LLMModel?) -> Bool {
+        // Mirror the gate on draft/recording so the camera button doesn't
+        // accept input while another async path is running.
+        imageAttachment == nil && !isRecording && !isTranscribing && !isGenerating
     }
 
     func canRecord(transcribeBackend: TranscribeBackend?) -> Bool {
@@ -145,6 +170,7 @@ final class ChatViewModel {
     func clear() {
         stop()
         messages.removeAll()
+        imageAttachment = nil
     }
 
     // MARK: - Mic / transcribe
@@ -213,6 +239,23 @@ final class ChatViewModel {
     }
 
     func clearError() { lastError = nil }
+
+    // MARK: - Image attachment
+
+    /// Pin captured image bytes (JPEG/PNG) to the next message. Send is
+    /// still gated until wire encoding is wired up — for now the bytes
+    /// just show in the preview and `clear()` / `removeImageAttachment()`
+    /// drop them.
+    func attach(imageData: Data) {
+        imageAttachment = .data(imageData)
+        Self.logger.info("Attached image: \(imageData.count) bytes")
+    }
+
+    func removeImageAttachment() {
+        guard imageAttachment != nil else { return }
+        imageAttachment = nil
+        Self.logger.info("Removed image attachment")
+    }
 
     // MARK: - Private
 

@@ -28,8 +28,12 @@
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>DriftV2 discovers nearby devices over Wi-Fi to share models and chat.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>DriftV2 uses the camera to attach photos to chat messages.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>DriftV2 uses the microphone to transcribe speech via the loaded Whisper model.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>DriftV2 uses your photo library to attach photos to chat messages.</string>
 
 	<key>UIApplicationSceneManifest</key>
 	<dict>
