@@ -10,10 +10,10 @@
 		08C529F02FAD4E0400807FE3 /* Pulse in Frameworks */ = {isa = PBXBuildFile; productRef = 08C529EF2FAD4E0400807FE3 /* Pulse */; };
 		08C529F22FAD4E0400807FE3 /* PulseProxy in Frameworks */ = {isa = PBXBuildFile; productRef = 08C529F12FAD4E0400807FE3 /* PulseProxy */; };
 		08C529F42FAD4E0400807FE3 /* PulseUI in Frameworks */ = {isa = PBXBuildFile; productRef = 08C529F32FAD4E0400807FE3 /* PulseUI */; };
-		08C52F652FAD6FEB00807FE3 /* Peerly in Frameworks */ = {isa = PBXBuildFile; productRef = 08C52F642FAD6FEB00807FE3 /* Peerly */; };
-		AABB000000000000000000A1 /* ModelKit in Frameworks */ = {isa = PBXBuildFile; productRef = AABB000000000000000000B1 /* ModelKit */; };
-		AABB000000000000000000A2 /* ModelKitMLX in Frameworks */ = {isa = PBXBuildFile; productRef = AABB000000000000000000B2 /* ModelKitMLX */; };
-		AABB000000000000000000A3 /* ModelKitWhisper in Frameworks */ = {isa = PBXBuildFile; productRef = AABB000000000000000000B3 /* ModelKitWhisper */; };
+		08E869CA2FB2871F007016FA /* ModelKit in Frameworks */ = {isa = PBXBuildFile; productRef = 08E869C92FB2871F007016FA /* ModelKit */; };
+		08E869CC2FB2871F007016FA /* ModelKitMLX in Frameworks */ = {isa = PBXBuildFile; productRef = 08E869CB2FB2871F007016FA /* ModelKitMLX */; };
+		08E869CE2FB2871F007016FA /* ModelKitWhisper in Frameworks */ = {isa = PBXBuildFile; productRef = 08E869CD2FB2871F007016FA /* ModelKitWhisper */; };
+		08E869D12FB28736007016FA /* Peerly in Frameworks */ = {isa = PBXBuildFile; productRef = 08E869D02FB28736007016FA /* Peerly */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,13 +46,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				08E869CE2FB2871F007016FA /* ModelKitWhisper in Frameworks */,
 				08C529F42FAD4E0400807FE3 /* PulseUI in Frameworks */,
-				AABB000000000000000000A1 /* ModelKit in Frameworks */,
+				08E869CA2FB2871F007016FA /* ModelKit in Frameworks */,
 				08C529F22FAD4E0400807FE3 /* PulseProxy in Frameworks */,
-				AABB000000000000000000A2 /* ModelKitMLX in Frameworks */,
+				08E869CC2FB2871F007016FA /* ModelKitMLX in Frameworks */,
 				08C529F02FAD4E0400807FE3 /* Pulse in Frameworks */,
-				AABB000000000000000000A3 /* ModelKitWhisper in Frameworks */,
-				08C52F652FAD6FEB00807FE3 /* Peerly in Frameworks */,
+				08E869D12FB28736007016FA /* Peerly in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -95,13 +95,13 @@
 			);
 			name = DriftV2;
 			packageProductDependencies = (
-				AABB000000000000000000B1 /* ModelKit */,
-				AABB000000000000000000B2 /* ModelKitMLX */,
-				AABB000000000000000000B3 /* ModelKitWhisper */,
 				08C529EF2FAD4E0400807FE3 /* Pulse */,
 				08C529F12FAD4E0400807FE3 /* PulseProxy */,
 				08C529F32FAD4E0400807FE3 /* PulseUI */,
-				08C52F642FAD6FEB00807FE3 /* Peerly */,
+				08E869C92FB2871F007016FA /* ModelKit */,
+				08E869CB2FB2871F007016FA /* ModelKitMLX */,
+				08E869CD2FB2871F007016FA /* ModelKitWhisper */,
+				08E869D02FB28736007016FA /* Peerly */,
 			);
 			productName = DriftV2;
 			productReference = 085EE24E2FAD2FE40044870B /* DriftV2.app */;
@@ -132,9 +132,9 @@
 			mainGroup = 085EE2452FAD2FE40044870B;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				AABB000000000000000000C1 /* XCLocalSwiftPackageReference "../../ModelKit/ModelKit" */,
 				08C529EE2FAD4E0400807FE3 /* XCRemoteSwiftPackageReference "Pulse" */,
-				08C52F632FAD6FEB00807FE3 /* XCLocalSwiftPackageReference "../../Gemma4Networking/Peerly" */,
+				08E869C82FB2871F007016FA /* XCLocalSwiftPackageReference "../../ModelKit" */,
+				08E869CF2FB28736007016FA /* XCLocalSwiftPackageReference "../../Peerly" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 085EE24F2FAD2FE40044870B /* Products */;
@@ -379,13 +379,13 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		08C52F632FAD6FEB00807FE3 /* XCLocalSwiftPackageReference "../../Gemma4Networking/Peerly" */ = {
+		08E869C82FB2871F007016FA /* XCLocalSwiftPackageReference "../../ModelKit" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../Gemma4Networking/Peerly;
+			relativePath = ../../ModelKit;
 		};
-		AABB000000000000000000C1 /* XCLocalSwiftPackageReference "../../ModelKit/ModelKit" */ = {
+		08E869CF2FB28736007016FA /* XCLocalSwiftPackageReference "../../Peerly" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../ModelKit/ModelKit;
+			relativePath = ../../Peerly;
 		};
 /* End XCLocalSwiftPackageReference section */
 
@@ -416,21 +416,21 @@
 			package = 08C529EE2FAD4E0400807FE3 /* XCRemoteSwiftPackageReference "Pulse" */;
 			productName = PulseUI;
 		};
-		08C52F642FAD6FEB00807FE3 /* Peerly */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = Peerly;
-		};
-		AABB000000000000000000B1 /* ModelKit */ = {
+		08E869C92FB2871F007016FA /* ModelKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ModelKit;
 		};
-		AABB000000000000000000B2 /* ModelKitMLX */ = {
+		08E869CB2FB2871F007016FA /* ModelKitMLX */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ModelKitMLX;
 		};
-		AABB000000000000000000B3 /* ModelKitWhisper */ = {
+		08E869CD2FB2871F007016FA /* ModelKitWhisper */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ModelKitWhisper;
+		};
+		08E869D02FB28736007016FA /* Peerly */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Peerly;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
