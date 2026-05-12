@@ -24,6 +24,8 @@ struct ModelManagerView: View {
                     DeviceSummaryRow(summary: vm.deviceSummary, tier: vm.deviceTier)
                 }
 
+                SlipstreamDebugSection()
+
                 ForEach(vm.groupedCatalog, id: \.0) { kind, entries in
                     Section(kind.label) {
                         ForEach(entries) { entry in
