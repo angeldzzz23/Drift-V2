@@ -45,6 +45,10 @@ public struct Slipstream: Sendable {
         )
         let emit: @Sendable (SlipstreamEvent) -> Void = { continuation.yield($0) }
 
+        // Shared across every PeerFirstLoader — the cap is global across
+        // model kinds, not per-loader.
+        let gate = DownloadGate(capacity: config.maxConcurrentDownloads)
+
         // Client side: wrap each raw loader and register the wrapper into
         // the registry the app's ModelStore consults.
         for loader in loaders {
@@ -52,6 +56,7 @@ public struct Slipstream: Sendable {
                 wrapping: loader,
                 peerService: peerService,
                 config: config,
+                gate: gate,
                 emit: emit
             )
             registry.register(wrapped)

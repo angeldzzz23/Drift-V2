@@ -45,6 +45,11 @@ public final class SlipstreamConfig {
     /// v1 always behaves as 1; the field reserves the wire for v2.
     public var parallelPeers: Int
 
+    /// Cap on concurrent downloads across all models. Extra downloads queue
+    /// FIFO and start as slots free up. Read once when `Slipstream.install`
+    /// constructs the gate — runtime changes do not resize the live gate.
+    public let maxConcurrentDownloads: Int
+
     /// Whether this device replies with real manifests when peers ask.
     /// When `false`, the host service replies `.manifest(files: [])` so
     /// callers move on without your bandwidth.
@@ -57,8 +62,11 @@ public final class SlipstreamConfig {
         mode: Mode? = nil,
         chunkSize: Int = 1 << 20,
         parallelPeers: Int = 1,
+        maxConcurrentDownloads: Int = 2,
         sharesWeights: Bool? = nil
     ) {
+        precondition(maxConcurrentDownloads > 0, "maxConcurrentDownloads must be > 0")
+        self.maxConcurrentDownloads = maxConcurrentDownloads
         let defaults = UserDefaults.standard
         self.mode = mode
             ?? (defaults.string(forKey: Self.modeKey).flatMap(Mode.init(rawValue:)))
